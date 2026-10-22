@@ -46,9 +46,9 @@ local SpamMsgs = {
     "TMX MEIN FAN 💨",
     "TMX MEIN SALT 🧂",
     "ASURA ON TOP 💀",
-    "ASURA IS HIM 🔥",
-    "GET FLUNG BY ASURA",
-    "ASURA DOMINATING",
+    "TMX MEIN KELA 🍌",
+    "TMX MEIN CYCLE 🚲",
+    "TMX MEIN CHAIR 🪑",
     "L + RATIO + ASURA"
 }
 
