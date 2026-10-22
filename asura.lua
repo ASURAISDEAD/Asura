@@ -1,6 +1,6 @@
 --[[
-    ASURA Troller v2
-    Fixed fling • Live status • Built-in spam messages • Smaller GUI
+    ASURA Troller v3
+    Stronger Fling + Working Spam + Anti-Sit + Live Status
 ]]
 
 local Players = game:GetService("Players")
@@ -9,6 +9,7 @@ local UIS = game:GetService("UserInputService")
 local TCS = game:GetService("TextChatService")
 local CG = game:GetService("CoreGui")
 local VU = game:GetService("VirtualUser")
+local RS = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
 
 -- Theme
@@ -52,18 +53,21 @@ local SpamMsgs = {
     "L + RATIO + ASURA"
 }
 
-pcall(function() if CG:FindFirstChild("AsuraTroller") then CG.AsuraTroller:Destroy() end end)
+pcall(function()
+    if CG:FindFirstChild("AsuraTroller") then CG.AsuraTroller:Destroy() end
+    if gethui and gethui():FindFirstChild("AsuraTroller") then gethui().AsuraTroller:Destroy() end
+end)
 
 local SG = Instance.new("ScreenGui")
 SG.Name = "AsuraTroller"
 SG.ResetOnSpawn = false
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-SG.Parent = (gethui and gethui()) or CG
+SG.Parent = (typeof(gethui) == "function" and gethui()) or CG
 
--- Main (smaller)
+-- Main
 local M = Instance.new("Frame", SG)
-M.Size = UDim2.new(0, 340, 0, 410)
-M.Position = UDim2.new(0.5, -170, 0.5, -205)
+M.Size = UDim2.new(0, 340, 0, 420)
+M.Position = UDim2.new(0.5, -170, 0.5, -210)
 M.BackgroundColor3 = T.Bg
 M.BorderSizePixel = 0
 M.Active = true
@@ -73,7 +77,7 @@ stroke.Color = T.Acc
 stroke.Thickness = 1.2
 stroke.Transparency = 0.35
 
--- Title bar (draggable)
+-- Title bar
 local TB = Instance.new("Frame", M)
 TB.Size = UDim2.new(1, 0, 0, 34)
 TB.BackgroundColor3 = T.Surf
@@ -189,7 +193,7 @@ Instance.new("UICorner", search).CornerRadius = UDim.new(0, 5)
 Instance.new("UIPadding", search).PaddingLeft = UDim.new(0, 8)
 
 local list = Instance.new("ScrollingFrame", FP)
-list.Size = UDim2.new(1, 0, 0, 175)
+list.Size = UDim2.new(1, 0, 0, 170)
 list.Position = UDim2.new(0, 0, 0, 32)
 list.BackgroundColor3 = T.Surf
 list.BorderSizePixel = 0
@@ -270,8 +274,8 @@ end)
 
 -- Bottom controls
 local bot = Instance.new("Frame", FP)
-bot.Size = UDim2.new(1, 0, 0, 95)
-bot.Position = UDim2.new(0, 0, 0, 215)
+bot.Size = UDim2.new(1, 0, 0, 100)
+bot.Position = UDim2.new(0, 0, 0, 210)
 bot.BackgroundTransparency = 1
 
 SelLabel = Instance.new("TextLabel", bot)
@@ -325,8 +329,6 @@ fakeB.Font = Enum.Font.GothamBold
 fakeB.TextSize = 10
 fakeB.TextColor3 = T.Txt
 Instance.new("UICorner", fakeB).CornerRadius = UDim.new(0, 4)
-
--- positions fixed above
 
 realB.MouseButton1Click:Connect(function()
     S.Style = "REAL"
@@ -504,7 +506,6 @@ end
 -- CORE LOGIC
 -------------------------------------------------
 
--- Populate players
 local function refreshPlayers()
     for _, pl in ipairs(Players:GetPlayers()) do
         makeRow(pl)
@@ -512,7 +513,7 @@ local function refreshPlayers()
 end
 refreshPlayers()
 Players.PlayerAdded:Connect(function(pl)
-    task.wait(0.3)
+    task.wait(0.4)
     makeRow(pl)
 end)
 Players.PlayerRemoving:Connect(function(pl)
@@ -524,7 +525,6 @@ Players.PlayerRemoving:Connect(function(pl)
     task.delay(0.15, refreshTargets)
 end)
 
--- Live status
 task.spawn(function()
     while SG.Parent do
         for pl, d in pairs(Rows) do
@@ -565,13 +565,14 @@ RunService.Heartbeat:Connect(function()
         local hum = LP.Character:FindFirstChildOfClass("Humanoid")
         if hum and hum.Sit then
             hum.Sit = false
+            hum.PlatformStand = false
         end
     end
 end)
 
--- Improved Fling
 local function getRoot(char)
-    return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
 end
 
 flingBtn.MouseButton1Click:Connect(function()
@@ -580,75 +581,81 @@ flingBtn.MouseButton1Click:Connect(function()
     flingBtn.BackgroundColor3 = S.Fling and T.AccD or T.Acc
 end)
 
--- Continuous fling loop (low delay)
+-- STRONGER FLING
 task.spawn(function()
     while true do
         if S.Fling then
-            local myRoot = getRoot(LP.Character)
-            if myRoot then
+            local myChar = LP.Character
+            local myRoot = getRoot(myChar)
+            local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+
+            if myRoot and myHum then
                 for pl in pairs(S.Sel) do
                     if pl.Parent and pl.Character then
                         local targetRoot = getRoot(pl.Character)
-                        if targetRoot then
+                        local targetHum = pl.Character:FindFirstChildOfClass("Humanoid")
+
+                        if targetRoot and targetHum and targetHum.Health > 0 then
                             if S.Style == "REAL" then
                                 pcall(function()
+                                    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 1)
+
+                                    targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                                    targetRoot.AssemblyAngularVelocity = Vector3.new(9e9, 9e9, 9e9)
+
                                     local bv = Instance.new("BodyVelocity")
-                                    bv.Name = "AsuraFling"
-                                    bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                                    bv.Velocity = Vector3.new(0, 0, 0)
-                                    bv.Parent = myRoot
+                                    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                                    bv.Velocity = Vector3.new(999999, 999999, 999999)
+                                    bv.Parent = targetRoot
 
-                                    myRoot.CFrame = targetRoot.CFrame
+                                    local ba = Instance.new("BodyAngularVelocity")
+                                    ba.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                                    ba.AngularVelocity = Vector3.new(9e9, 9e9, 9e9)
+                                    ba.Parent = targetRoot
 
-                                    local bang = Instance.new("BodyAngularVelocity")
-                                    bang.Name = "AsuraSpin"
-                                    bang.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-                                    bang.AngularVelocity = Vector3.new(0, 99999, 0)
-                                    bang.Parent = targetRoot
-
-                                    local bv2 = Instance.new("BodyVelocity")
-                                    bv2.Name = "AsuraForce"
-                                    bv2.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                                    bv2.Velocity = (targetRoot.Position - myRoot.Position).Unit * 200 + Vector3.new(0, 150, 0)
-                                    bv2.Parent = targetRoot
-
-                                    task.wait(0.08)
+                                    task.wait(0.1)
                                     pcall(function() bv:Destroy() end)
-                                    pcall(function() bang:Destroy() end)
-                                    pcall(function() bv2:Destroy() end)
+                                    pcall(function() ba:Destroy() end)
                                 end)
                             else
                                 pcall(function()
-                                    targetRoot.AssemblyAngularVelocity = Vector3.new(9999, 9999, 9999)
+                                    targetRoot.AssemblyAngularVelocity = Vector3.new(9e9, 9e9, 9e9)
                                 end)
                             end
                         end
                     end
                 end
             end
-            task.wait(0.05)
+            task.wait(0.03)
         else
-            task.wait(0.2)
+            task.wait(0.15)
         end
     end
 end)
 
--- Chat function
+-- Better Chat function
 local function sendChat(msg)
-    pcall(function()
+    local success = pcall(function()
         if TCS.ChatVersion == Enum.ChatVersion.TextChatService then
-            local ch = TCS.TextChannels:FindFirstChild("RBXGeneral")
-            if ch then ch:SendAsync(msg) end
-        else
-            local ev = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-            if ev and ev:FindFirstChild("SayMessageRequest") then
-                ev.SayMessageRequest:FireServer(msg, "All")
+            local channel = TCS.TextChannels:FindFirstChild("RBXGeneral")
+            if channel then
+                channel:SendAsync(msg)
+                return true
             end
         end
     end)
+
+    if not success then
+        pcall(function()
+            local ev = RS:FindFirstChild("DefaultChatSystemChatEvents")
+            if ev and ev:FindFirstChild("SayMessageRequest") then
+                ev.SayMessageRequest:FireServer(msg, "All")
+            end
+        end)
+    end
 end
 
--- Spam with built-in messages + ASURA every 25
+-- Spam
 spamBtn.MouseButton1Click:Connect(function()
     S.Spam = not S.Spam
     spamBtn.Text = S.Spam and "STOP SPAM" or "START SPAM"
@@ -687,4 +694,4 @@ spamBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-print("[ASURA] v2 Loaded • Fling fixed • Built-in spam ready")
+print("[ASURA] v3 Loaded • Stronger Fling • Better Chat")
