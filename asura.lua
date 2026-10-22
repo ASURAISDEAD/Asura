@@ -1,6 +1,6 @@
 --[[
-    ASURA Troller v3
-    Stronger Fling + Working Spam + Anti-Sit + Live Status
+    ASURA Troller v5
+    Orbit Fling • Symbols • Clean Spam • Extra Features
 ]]
 
 local Players = game:GetService("Players")
@@ -12,7 +12,6 @@ local VU = game:GetService("VirtualUser")
 local RS = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
 
--- Theme
 local T = {
     Bg = Color3.fromRGB(16,16,20),
     Surf = Color3.fromRGB(26,26,32),
@@ -32,12 +31,12 @@ local S = {
     Noclip = false,
     AntiAFK = true,
     AntiSit = true,
-    Style = "REAL",
     Delay = 2.5,
-    MsgCount = 0
+    MsgCount = 0,
+    Angle = 0,
+    Symbols = ""
 }
 
--- Built-in spam messages
 local SpamMsgs = {
     "TMX MEIN WATER 💦",
     "TMX MEIN KELA 🍌",
@@ -46,16 +45,16 @@ local SpamMsgs = {
     "TMX MEIN VOID 🟣",
     "TMX MEIN FAN 💨",
     "TMX MEIN SALT 🧂",
-    "ASURA ON TOP 💀",
     "ASURA IS HIM 🔥",
     "GET FLUNG BY ASURA",
     "ASURA DOMINATING",
-    "L + RATIO + ASURA"
+    "L + RATIO + ASURA",
+    "ASURA TOO COLD 🥶"
 }
 
 pcall(function()
     if CG:FindFirstChild("AsuraTroller") then CG.AsuraTroller:Destroy() end
-    if gethui and gethui():FindFirstChild("AsuraTroller") then gethui().AsuraTroller:Destroy() end
+    if typeof(gethui) == "function" and gethui():FindFirstChild("AsuraTroller") then gethui().AsuraTroller:Destroy() end
 end)
 
 local SG = Instance.new("ScreenGui")
@@ -64,10 +63,9 @@ SG.ResetOnSpawn = false
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SG.Parent = (typeof(gethui) == "function" and gethui()) or CG
 
--- Main
 local M = Instance.new("Frame", SG)
-M.Size = UDim2.new(0, 340, 0, 420)
-M.Position = UDim2.new(0.5, -170, 0.5, -210)
+M.Size = UDim2.new(0, 340, 0, 450)
+M.Position = UDim2.new(0.5, -170, 0.5, -225)
 M.BackgroundColor3 = T.Bg
 M.BorderSizePixel = 0
 M.Active = true
@@ -77,7 +75,7 @@ stroke.Color = T.Acc
 stroke.Thickness = 1.2
 stroke.Transparency = 0.35
 
--- Title bar
+-- Title
 local TB = Instance.new("Frame", M)
 TB.Size = UDim2.new(1, 0, 0, 34)
 TB.BackgroundColor3 = T.Surf
@@ -114,7 +112,7 @@ close.MouseButton1Click:Connect(function()
     SG:Destroy()
 end)
 
--- Dragging
+-- Drag
 local dragging, dragStart, startPos
 TB.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -193,13 +191,15 @@ Instance.new("UICorner", search).CornerRadius = UDim.new(0, 5)
 Instance.new("UIPadding", search).PaddingLeft = UDim.new(0, 8)
 
 local list = Instance.new("ScrollingFrame", FP)
-list.Size = UDim2.new(1, 0, 0, 170)
+list.Size = UDim2.new(1, 0, 0, 150)
 list.Position = UDim2.new(0, 0, 0, 32)
 list.BackgroundColor3 = T.Surf
 list.BorderSizePixel = 0
-list.ScrollBarThickness = 3
+list.ScrollBarThickness = 4
 list.ScrollBarImageColor3 = T.Acc
 list.CanvasSize = UDim2.new(0, 0, 0, 0)
+list.ScrollingEnabled = true
+list.ScrollingDirection = Enum.ScrollingDirection.Y
 Instance.new("UICorner", list).CornerRadius = UDim.new(0, 5)
 
 local layout = Instance.new("UIListLayout", list)
@@ -210,7 +210,7 @@ pad.PaddingTop = UDim.new(0, 4)
 pad.PaddingLeft = UDim.new(0, 4)
 pad.PaddingRight = UDim.new(0, 4)
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    list.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 8)
+    list.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
 end)
 
 local Rows = {}
@@ -272,20 +272,58 @@ search:GetPropertyChangedSignal("Text"):Connect(function()
     end
 end)
 
--- Bottom controls
 local bot = Instance.new("Frame", FP)
-bot.Size = UDim2.new(1, 0, 0, 100)
-bot.Position = UDim2.new(0, 0, 0, 210)
+bot.Size = UDim2.new(1, 0, 0, 120)
+bot.Position = UDim2.new(0, 0, 0, 190)
 bot.BackgroundTransparency = 1
 
 SelLabel = Instance.new("TextLabel", bot)
-SelLabel.Size = UDim2.new(1, 0, 0, 16)
+SelLabel.Size = UDim2.new(0.5, 0, 0, 16)
 SelLabel.BackgroundTransparency = 1
 SelLabel.Text = "0 selected"
 SelLabel.Font = Enum.Font.Gotham
 SelLabel.TextSize = 11
 SelLabel.TextColor3 = T.Dim
 SelLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Clear + Select All buttons
+local clearBtn = Instance.new("TextButton", bot)
+clearBtn.Size = UDim2.new(0.23, 0, 0, 20)
+clearBtn.Position = UDim2.new(0.52, 0, 0, 0)
+clearBtn.BackgroundColor3 = T.Surf2
+clearBtn.Text = "Clear"
+clearBtn.Font = Enum.Font.GothamBold
+clearBtn.TextSize = 10
+clearBtn.TextColor3 = T.Txt
+Instance.new("UICorner", clearBtn).CornerRadius = UDim.new(0, 4)
+
+local allBtn = Instance.new("TextButton", bot)
+allBtn.Size = UDim2.new(0.23, 0, 0, 20)
+allBtn.Position = UDim2.new(0.77, 0, 0, 0)
+allBtn.BackgroundColor3 = T.Surf2
+allBtn.Text = "All"
+allBtn.Font = Enum.Font.GothamBold
+allBtn.TextSize = 10
+allBtn.TextColor3 = T.Txt
+Instance.new("UICorner", allBtn).CornerRadius = UDim.new(0, 4)
+
+clearBtn.MouseButton1Click:Connect(function()
+    for pl, d in pairs(Rows) do
+        S.Sel[pl] = nil
+        d.row.BackgroundColor3 = T.Surf2
+    end
+    updCount()
+end)
+
+allBtn.MouseButton1Click:Connect(function()
+    for pl, d in pairs(Rows) do
+        if pl.Parent then
+            S.Sel[pl] = true
+            d.row.BackgroundColor3 = T.AccD
+        end
+    end
+    updCount()
+end)
 
 local function toggleBtn(txt, x, y, def, cb)
     local b = Instance.new("TextButton", bot)
@@ -306,48 +344,29 @@ local function toggleBtn(txt, x, y, def, cb)
     end)
 end
 
-toggleBtn("NOCLIP", 0, 20, false, function(v) S.Noclip = v end)
-toggleBtn("ANTI-AFK", 0.52, 20, true, function(v) S.AntiAFK = v end)
-toggleBtn("ANTI-SIT", 0, 48, true, function(v) S.AntiSit = v end)
+toggleBtn("NOCLIP", 0, 26, false, function(v) S.Noclip = v end)
+toggleBtn("ANTI-AFK", 0.52, 26, true, function(v) S.AntiAFK = v end)
+toggleBtn("ANTI-SIT", 0, 54, true, function(v) S.AntiSit = v end)
 
-local realB = Instance.new("TextButton", bot)
-realB.Size = UDim2.new(0.48, 0, 0, 24)
-realB.Position = UDim2.new(0.52, 0, 0, 48)
-realB.BackgroundColor3 = T.Acc
-realB.Text = "REAL FLING"
-realB.Font = Enum.Font.GothamBold
-realB.TextSize = 10
-realB.TextColor3 = T.Txt
-Instance.new("UICorner", realB).CornerRadius = UDim.new(0, 4)
+-- Status label
+local statusL = Instance.new("TextLabel", bot)
+statusL.Size = UDim2.new(0.48, 0, 0, 24)
+statusL.Position = UDim2.new(0.52, 0, 0, 54)
+statusL.BackgroundColor3 = T.Surf2
+statusL.Text = "Idle"
+statusL.Font = Enum.Font.GothamBold
+statusL.TextSize = 10
+statusL.TextColor3 = T.Dim
+Instance.new("UICorner", statusL).CornerRadius = UDim.new(0, 4)
 
-local fakeB = Instance.new("TextButton", bot)
-fakeB.Size = UDim2.new(0.48, 0, 0, 24)
-fakeB.Position = UDim2.new(0, 0, 0, 48)
-fakeB.BackgroundColor3 = T.Surf2
-fakeB.Text = "FAKE FLING"
-fakeB.Font = Enum.Font.GothamBold
-fakeB.TextSize = 10
-fakeB.TextColor3 = T.Txt
-Instance.new("UICorner", fakeB).CornerRadius = UDim.new(0, 4)
-
-realB.MouseButton1Click:Connect(function()
-    S.Style = "REAL"
-    realB.BackgroundColor3 = T.Acc
-    fakeB.BackgroundColor3 = T.Surf2
-end)
-fakeB.MouseButton1Click:Connect(function()
-    S.Style = "FAKE"
-    fakeB.BackgroundColor3 = T.Acc
-    realB.BackgroundColor3 = T.Surf2
-end)
-
+-- Fling ON/OFF
 local flingBtn = Instance.new("TextButton", FP)
-flingBtn.Size = UDim2.new(1, 0, 0, 32)
-flingBtn.Position = UDim2.new(0, 0, 1, -36)
+flingBtn.Size = UDim2.new(1, 0, 0, 36)
+flingBtn.Position = UDim2.new(0, 0, 1, -40)
 flingBtn.BackgroundColor3 = T.Acc
-flingBtn.Text = "START FLING"
+flingBtn.Text = "FLING: OFF"
 flingBtn.Font = Enum.Font.GothamBold
-flingBtn.TextSize = 13
+flingBtn.TextSize = 14
 flingBtn.TextColor3 = T.Txt
 Instance.new("UICorner", flingBtn).CornerRadius = UDim.new(0, 6)
 
@@ -375,25 +394,27 @@ end
 
 local targetBox = input("Target name (optional)", 0, "")
 local delayBox = input("Delay (seconds)", 32, "2.5")
-local nameBox = input("Your name", 64, LP.Name)
+local symBox = input("Symbols (e.g. @#!$%)", 64, "")
 
 local msgLabel = Instance.new("TextLabel", SP)
 msgLabel.Size = UDim2.new(1, 0, 0, 16)
 msgLabel.Position = UDim2.new(0, 0, 0, 96)
 msgLabel.BackgroundTransparency = 1
-msgLabel.Text = "Built-in messages (auto cycles + ASURA every 25)"
+msgLabel.Text = "Messages (ASURA ON TOP only every 25 msgs)"
 msgLabel.Font = Enum.Font.Gotham
 msgLabel.TextSize = 11
 msgLabel.TextColor3 = T.Dim
 msgLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local msgList = Instance.new("ScrollingFrame", SP)
-msgList.Size = UDim2.new(1, 0, 0, 110)
+msgList.Size = UDim2.new(1, 0, 0, 120)
 msgList.Position = UDim2.new(0, 0, 0, 114)
 msgList.BackgroundColor3 = T.Surf
 msgList.BorderSizePixel = 0
-msgList.ScrollBarThickness = 3
+msgList.ScrollBarThickness = 4
 msgList.ScrollBarImageColor3 = T.Acc
+msgList.ScrollingEnabled = true
+msgList.ScrollingDirection = Enum.ScrollingDirection.Y
 Instance.new("UICorner", msgList).CornerRadius = UDim.new(0, 5)
 local msgLay = Instance.new("UIListLayout", msgList)
 msgLay.Padding = UDim.new(0, 2)
@@ -411,15 +432,16 @@ for _, m in ipairs(SpamMsgs) do
     l.TextColor3 = T.Txt
     l.TextXAlignment = Enum.TextXAlignment.Left
 end
-msgList.CanvasSize = UDim2.new(0, 0, 0, #SpamMsgs * 20 + 8)
+msgList.CanvasSize = UDim2.new(0, 0, 0, #SpamMsgs * 20 + 10)
 
+-- Spam ON/OFF
 local spamBtn = Instance.new("TextButton", SP)
-spamBtn.Size = UDim2.new(1, 0, 0, 32)
-spamBtn.Position = UDim2.new(0, 0, 1, -36)
+spamBtn.Size = UDim2.new(1, 0, 0, 36)
+spamBtn.Position = UDim2.new(0, 0, 1, -40)
 spamBtn.BackgroundColor3 = T.Acc
-spamBtn.Text = "START SPAM"
+spamBtn.Text = "SPAM: OFF"
 spamBtn.Font = Enum.Font.GothamBold
-spamBtn.TextSize = 13
+spamBtn.TextSize = 14
 spamBtn.TextColor3 = T.Txt
 Instance.new("UICorner", spamBtn).CornerRadius = UDim.new(0, 6)
 
@@ -442,8 +464,9 @@ tList.Size = UDim2.new(1, 0, 1, -24)
 tList.Position = UDim2.new(0, 0, 0, 22)
 tList.BackgroundColor3 = T.Surf
 tList.BorderSizePixel = 0
-tList.ScrollBarThickness = 3
+tList.ScrollBarThickness = 4
 tList.ScrollBarImageColor3 = T.Acc
+tList.ScrollingEnabled = true
 Instance.new("UICorner", tList).CornerRadius = UDim.new(0, 5)
 local tLay = Instance.new("UIListLayout", tList)
 tLay.Padding = UDim.new(0, 4)
@@ -539,11 +562,24 @@ task.spawn(function()
             end
         end
         refreshTargets()
+        -- Update status text
+        if S.Fling and S.Spam then
+            statusL.Text = "Fling + Spam"
+            statusL.TextColor3 = T.Ok
+        elseif S.Fling then
+            statusL.Text = "Flinging"
+            statusL.TextColor3 = T.Ok
+        elseif S.Spam then
+            statusL.Text = "Spamming"
+            statusL.TextColor3 = T.Ok
+        else
+            statusL.Text = "Idle"
+            statusL.TextColor3 = T.Dim
+        end
         task.wait(0.7)
     end
 end)
 
--- Noclip
 RunService.Stepped:Connect(function()
     if S.Noclip and LP.Character then
         for _, p in ipairs(LP.Character:GetDescendants()) do
@@ -552,7 +588,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Anti-AFK + Anti-Sit
 LP.Idled:Connect(function()
     if S.AntiAFK then
         VU:CaptureController()
@@ -575,97 +610,79 @@ local function getRoot(char)
     return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
 end
 
+-- Fling ON/OFF
 flingBtn.MouseButton1Click:Connect(function()
     S.Fling = not S.Fling
-    flingBtn.Text = S.Fling and "STOP FLING" or "START FLING"
-    flingBtn.BackgroundColor3 = S.Fling and T.AccD or T.Acc
+    if S.Fling then
+        flingBtn.Text = "FLING: ON"
+        flingBtn.BackgroundColor3 = T.Ok
+    else
+        flingBtn.Text = "FLING: OFF"
+        flingBtn.BackgroundColor3 = T.Acc
+    end
 end)
 
--- STRONGER FLING
+-- ORBIT FLING
 task.spawn(function()
     while true do
         if S.Fling then
-            local myChar = LP.Character
-            local myRoot = getRoot(myChar)
-            local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
-
-            if myRoot and myHum then
+            local myRoot = getRoot(LP.Character)
+            if myRoot then
                 for pl in pairs(S.Sel) do
                     if pl.Parent and pl.Character then
                         local targetRoot = getRoot(pl.Character)
-                        local targetHum = pl.Character:FindFirstChildOfClass("Humanoid")
+                        if targetRoot then
+                            S.Angle = S.Angle + 0.4
+                            local radius = 1.5 + math.sin(S.Angle * 2.2) * 3.5
+                            local offset = CFrame.Angles(0, S.Angle, 0) * CFrame.new(0, 0, radius)
 
-                        if targetRoot and targetHum and targetHum.Health > 0 then
-                            if S.Style == "REAL" then
-                                pcall(function()
-                                    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 1)
-
-                                    targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                                    targetRoot.AssemblyAngularVelocity = Vector3.new(9e9, 9e9, 9e9)
-
-                                    local bv = Instance.new("BodyVelocity")
-                                    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                                    bv.Velocity = Vector3.new(999999, 999999, 999999)
-                                    bv.Parent = targetRoot
-
-                                    local ba = Instance.new("BodyAngularVelocity")
-                                    ba.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-                                    ba.AngularVelocity = Vector3.new(9e9, 9e9, 9e9)
-                                    ba.Parent = targetRoot
-
-                                    task.wait(0.1)
-                                    pcall(function() bv:Destroy() end)
-                                    pcall(function() ba:Destroy() end)
-                                end)
-                            else
-                                pcall(function()
-                                    targetRoot.AssemblyAngularVelocity = Vector3.new(9e9, 9e9, 9e9)
-                                end)
-                            end
+                            pcall(function()
+                                myRoot.CFrame = targetRoot.CFrame * offset
+                                targetRoot.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+                                targetRoot.AssemblyLinearVelocity = Vector3.new(
+                                    math.random(-120, 120),
+                                    180 + math.random(0, 80),
+                                    math.random(-120, 120)
+                                )
+                            end)
                         end
                     end
                 end
             end
-            task.wait(0.03)
+            task.wait(0.02)
         else
-            task.wait(0.15)
+            task.wait(0.1)
         end
     end
 end)
 
--- Better Chat function
+-- Chat
 local function sendChat(msg)
-    local success = pcall(function()
+    pcall(function()
         if TCS.ChatVersion == Enum.ChatVersion.TextChatService then
             local channel = TCS.TextChannels:FindFirstChild("RBXGeneral")
             if channel then
                 channel:SendAsync(msg)
-                return true
+                return
             end
         end
+        local ev = RS:FindFirstChild("DefaultChatSystemChatEvents")
+        if ev and ev:FindFirstChild("SayMessageRequest") then
+            ev.SayMessageRequest:FireServer(msg, "All")
+        end
     end)
-
-    if not success then
-        pcall(function()
-            local ev = RS:FindFirstChild("DefaultChatSystemChatEvents")
-            if ev and ev:FindFirstChild("SayMessageRequest") then
-                ev.SayMessageRequest:FireServer(msg, "All")
-            end
-        end)
-    end
 end
 
--- Spam
+-- Spam ON/OFF  (ASURA ON TOP only every 25 messages)
 spamBtn.MouseButton1Click:Connect(function()
     S.Spam = not S.Spam
-    spamBtn.Text = S.Spam and "STOP SPAM" or "START SPAM"
-    spamBtn.BackgroundColor3 = S.Spam and T.AccD or T.Acc
-
     if S.Spam then
+        spamBtn.Text = "SPAM: ON"
+        spamBtn.BackgroundColor3 = T.Ok
         S.Delay = tonumber(delayBox.Text) or 2.5
+        S.Symbols = symBox.Text
         S.MsgCount = 0
         local targetName = targetBox.Text
-        local yourName = nameBox.Text
 
         task.spawn(function()
             local idx = 1
@@ -673,6 +690,7 @@ spamBtn.MouseButton1Click:Connect(function()
                 S.MsgCount = S.MsgCount + 1
 
                 local msg
+                -- ONLY every 25 messages
                 if S.MsgCount % 25 == 0 then
                     msg = "ASURA ON TOP 💀🔥"
                 else
@@ -683,15 +701,18 @@ spamBtn.MouseButton1Click:Connect(function()
                 if targetName ~= "" then
                     msg = targetName .. " " .. msg
                 end
-                if yourName ~= "" then
-                    msg = msg .. " | " .. yourName
+                if S.Symbols ~= "" then
+                    msg = S.Symbols .. " " .. msg .. " " .. S.Symbols
                 end
 
                 sendChat(msg)
                 task.wait(S.Delay)
             end
         end)
+    else
+        spamBtn.Text = "SPAM: OFF"
+        spamBtn.BackgroundColor3 = T.Acc
     end
 end)
 
-print("[ASURA] v3 Loaded • Stronger Fling • Better Chat")
+print("[ASURA] v5 Loaded • Symbols • Orbit Fling • Extra Features")
