@@ -1,6 +1,6 @@
 --[[
-    ASURA Troller v8
-    Smaller • Minimize • Better Fly • Custom Speed • VC Bypass
+    ASURA Troller v9
+    Better Fly Animation • Reanimation • Clean Minimize
 ]]
 
 local Players = game:GetService("Players")
@@ -31,7 +31,7 @@ local C = {
 local S = {
     Sel = {}, Fling = false, Spam = false, Noclip = false,
     AntiAFK = true, AntiSit = true, Fly = false, Speed = false,
-    InfJump = false, ESP = false, ClickTP = false, VCBypass = false,
+    InfJump = false, ESP = false, ClickTP = false, Reanim = false,
     Delay = 2.5, MsgCount = 0, Angle = 0, Symbols = "",
     SpeedVal = 50, FlySpeed = 60, Minimized = false
 }
@@ -60,7 +60,9 @@ SG.ResetOnSpawn = false
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SG.Parent = (typeof(gethui) == "function" and gethui()) or CG
 
--- Main (smaller)
+-------------------------------------------------
+-- MAIN WINDOW
+-------------------------------------------------
 local Main = Instance.new("Frame", SG)
 Main.Size = UDim2.new(0, 0, 0, 0)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -105,7 +107,6 @@ Title.TextSize = 15
 Title.TextColor3 = C.Soft
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Minimize
 local MinBtn = Instance.new("TextButton", Top)
 MinBtn.Size = UDim2.new(0, 24, 0, 24)
 MinBtn.Position = UDim2.new(1, -56, 0.5, -12)
@@ -135,20 +136,78 @@ Close.MouseButton1Click:Connect(function()
     task.wait(0.25) SG:Destroy()
 end)
 
-local fullSize = UDim2.new(0, 320, 0, 400)
-local miniSize = UDim2.new(0, 320, 0, 40)
-MinBtn.MouseButton1Click:Connect(function()
-    S.Minimized = not S.Minimized
-    if S.Minimized then
-        tw(Main, {Size = miniSize}, 0.3, Enum.EasingStyle.Quad)
-        MinBtn.Text = "+"
-    else
-        tw(Main, {Size = fullSize}, 0.3, Enum.EasingStyle.Quad)
-        MinBtn.Text = "–"
+-------------------------------------------------
+-- CLEAN MINIMIZED BAR
+-------------------------------------------------
+local MiniBar = Instance.new("Frame", SG)
+MiniBar.Size = UDim2.new(0, 140, 0, 36)
+MiniBar.Position = UDim2.new(0.5, -70, 0, 20)
+MiniBar.BackgroundColor3 = C.Bg
+MiniBar.BorderSizePixel = 0
+MiniBar.Visible = false
+MiniBar.Active = true
+Instance.new("UICorner", MiniBar).CornerRadius = UDim.new(0, 18)
+local mbs = Instance.new("UIStroke", MiniBar)
+mbs.Color = C.Acc
+mbs.Thickness = 1.2
+mbs.Transparency = 0.35
+
+local miniTitle = Instance.new("TextLabel", MiniBar)
+miniTitle.Size = UDim2.new(1, -40, 1, 0)
+miniTitle.Position = UDim2.new(0, 14, 0, 0)
+miniTitle.BackgroundTransparency = 1
+miniTitle.Text = "ASURA"
+miniTitle.Font = Enum.Font.GothamBlack
+miniTitle.TextSize = 13
+miniTitle.TextColor3 = C.Soft
+miniTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local expandBtn = Instance.new("TextButton", MiniBar)
+expandBtn.Size = UDim2.new(0, 28, 0, 28)
+expandBtn.Position = UDim2.new(1, -32, 0.5, -14)
+expandBtn.BackgroundColor3 = C.Acc2
+expandBtn.Text = "+"
+expandBtn.Font = Enum.Font.GothamBold
+expandBtn.TextSize = 16
+expandBtn.TextColor3 = C.Text
+Instance.new("UICorner", expandBtn).CornerRadius = UDim.new(0, 14)
+
+-- Drag mini bar
+local mDrag, mDS, mSP
+MiniBar.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        mDrag = true mDS = i.Position mSP = MiniBar.Position
+    end
+end)
+MiniBar.InputEnded:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then mDrag = false end
+end)
+UIS.InputChanged:Connect(function(i)
+    if mDrag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+        local d = i.Position - mDS
+        MiniBar.Position = UDim2.new(mSP.X.Scale, mSP.X.Offset + d.X, mSP.Y.Scale, mSP.Y.Offset + d.Y)
     end
 end)
 
--- Drag
+local function setMinimized(state)
+    S.Minimized = state
+    if state then
+        Main.Visible = false
+        MiniBar.Visible = true
+        MiniBar.Size = UDim2.new(0, 0, 0, 36)
+        tw(MiniBar, {Size = UDim2.new(0, 140, 0, 36)}, 0.25, Enum.EasingStyle.Back)
+    else
+        MiniBar.Visible = false
+        Main.Visible = true
+        Main.Size = UDim2.new(0, 0, 0, 0)
+        tw(Main, {Size = UDim2.new(0, 320, 0, 400)}, 0.3, Enum.EasingStyle.Back)
+    end
+end
+
+MinBtn.MouseButton1Click:Connect(function() setMinimized(true) end)
+expandBtn.MouseButton1Click:Connect(function() setMinimized(false) end)
+
+-- Drag main
 local drag, ds, sp
 Top.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -165,7 +224,9 @@ UIS.InputChanged:Connect(function(i)
     end
 end)
 
--- Side nav (compact)
+-------------------------------------------------
+-- SIDE NAV
+-------------------------------------------------
 local Nav = Instance.new("Frame", Main)
 Nav.Size = UDim2.new(0, 56, 1, -48)
 Nav.Position = UDim2.new(0, 6, 0, 44)
@@ -240,7 +301,6 @@ NavBtns.FLING.btn.BackgroundColor3 = C.Acc2
 NavBtns.FLING.icon.TextColor3 = C.Text
 NavBtns.FLING.label.TextColor3 = C.Soft
 
--- Helpers
 local function pill(parent, text, x, y, w, active, cb)
     local b = Instance.new("TextButton", parent)
     b.Size = UDim2.new(0, w or 70, 0, 24)
@@ -293,7 +353,7 @@ local function inp(parent, ph, y, def)
 end
 
 -------------------------------------------------
--- FLING
+-- FLING PAGE
 -------------------------------------------------
 local FP = Pages.FLING
 local search = inp(FP, "Search...", 0)
@@ -411,7 +471,7 @@ flingBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- SPAM
+-- SPAM PAGE
 -------------------------------------------------
 local SP = Pages.SPAM
 local targetBox = inp(SP, "Target name (optional)", 0)
@@ -495,7 +555,7 @@ spamBtn.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- MISC
+-- MISC PAGE
 -------------------------------------------------
 local MP = Pages.MISC
 
@@ -522,7 +582,7 @@ end
 
 miscRow("FLY", 0, false, function(v) S.Fly = v end)
 
--- Speed with number input
+-- Speed with number
 local speedRow = Instance.new("Frame", MP)
 speedRow.Size = UDim2.new(1, 0, 0, 30)
 speedRow.Position = UDim2.new(0, 0, 0, 36)
@@ -555,7 +615,6 @@ speedBox.Text = "50"
 speedBox.Font = Enum.Font.GothamBold
 speedBox.TextSize = 12
 speedBox.TextColor3 = C.Soft
-speedBox.PlaceholderText = "50"
 speedBox.ClearTextOnFocus = false
 Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 5)
 speedBox.FocusLost:Connect(function()
@@ -566,7 +625,7 @@ end)
 miscRow("INF JUMP", 72, false, function(v) S.InfJump = v end)
 miscRow("ESP NAMES", 108, false, function(v) S.ESP = v end)
 miscRow("CLICK TP", 144, false, function(v) S.ClickTP = v end)
-miscRow("VC BYPASS", 180, false, function(v) S.VCBypass = v end)
+miscRow("REANIMATION", 180, false, function(v) S.Reanim = v end)
 
 local rejoin = bigBtn(MP, "REJOIN", 222, C.Card2)
 rejoin.MouseButton1Click:Connect(function() TS:Teleport(game.PlaceId, LP) end)
@@ -586,7 +645,7 @@ hop.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------
--- CORE
+-- CORE LOGIC
 -------------------------------------------------
 local function getRoot(c)
     return c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso"))
@@ -664,39 +723,56 @@ task.spawn(function()
     end
 end)
 
--- Better Fly (smoother)
+-------------------------------------------------
+-- BETTER FLY (smooth CFrame + BodyVelocity hybrid)
+-------------------------------------------------
 local flyBV, flyBG, flyConn
+local currentVel = Vector3.zero
+
 local function startFly()
-    local root = getRoot(LP.Character)
-    local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    local char = LP.Character
+    if not char then return end
+    local root = getRoot(char)
+    local hum = char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
+
     hum.PlatformStand = true
+    currentVel = Vector3.zero
+
     flyBV = Instance.new("BodyVelocity")
     flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
     flyBV.Velocity = Vector3.zero
-    flyBV.P = 1250
+    flyBV.P = 2000
     flyBV.Parent = root
+
     flyBG = Instance.new("BodyGyro")
     flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    flyBG.P = 3000
-    flyBG.D = 500
+    flyBG.P = 5000
+    flyBG.D = 400
+    flyBG.CFrame = root.CFrame
     flyBG.Parent = root
 
-    flyConn = RunService.RenderStepped:Connect(function()
-        if not S.Fly or not root.Parent then return end
+    flyConn = RunService.RenderStepped:Connect(function(dt)
+        if not S.Fly or not root or not root.Parent then return end
         local cam = workspace.CurrentCamera
-        local dir = Vector3.zero
-        if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
+        local move = Vector3.zero
 
-        local target = dir.Magnitude > 0 and dir.Unit * S.FlySpeed or Vector3.zero
-        -- smooth velocity lerp
-        flyBV.Velocity = flyBV.Velocity:Lerp(target, 0.2)
-        flyBG.CFrame = cam.CFrame
+        if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
+            move = move - Vector3.new(0, 1, 0)
+        end
+
+        local target = move.Magnitude > 0 and move.Unit * S.FlySpeed or Vector3.zero
+        -- smooth acceleration (feels more natural)
+        currentVel = currentVel:Lerp(target, math.clamp(dt * 8, 0, 1))
+        flyBV.Velocity = currentVel
+
+        -- smooth rotation to camera
+        flyBG.CFrame = flyBG.CFrame:Lerp(cam.CFrame, math.clamp(dt * 10, 0, 1))
     end)
 end
 
@@ -704,13 +780,13 @@ local function stopFly()
     if flyConn then flyConn:Disconnect() flyConn = nil end
     if flyBV then flyBV:Destroy() flyBV = nil end
     if flyBG then flyBG:Destroy() flyBG = nil end
+    currentVel = Vector3.zero
     if LP.Character then
         local h = LP.Character:FindFirstChildOfClass("Humanoid")
         if h then h.PlatformStand = false end
     end
 end
 
--- Watch fly toggle
 task.spawn(function()
     local was = false
     while SG.Parent do
@@ -721,7 +797,7 @@ task.spawn(function()
             stopFly()
             was = false
         end
-        task.wait(0.1)
+        task.wait(0.08)
     end
 end)
 
@@ -747,25 +823,30 @@ Mouse.Button1Down:Connect(function()
     end
 end)
 
--- VC Bypass (basic method)
+-------------------------------------------------
+-- BASIC REANIMATION (keeps character alive / resets physics)
+-------------------------------------------------
 task.spawn(function()
     while SG.Parent do
-        if S.VCBypass then
+        if S.Reanim and LP.Character then
             pcall(function()
-                local vs = game:GetService("VoiceChatService")
-                -- try enable
-                if vs then
-                    pcall(function() vs:joinVoice() end)
-                end
-                -- common bypass pattern used by many scripts
-                for _, v in ipairs(LP:GetDescendants()) do
-                    if v:IsA("Sound") and v.Name:lower():find("voice") then
-                        v.Volume = 1
+                local hum = LP.Character:FindFirstChildOfClass("Humanoid")
+                local root = getRoot(LP.Character)
+                if hum and root then
+                    -- prevent death / ragdoll
+                    if hum.Health <= 0 then
+                        hum.Health = hum.MaxHealth
+                    end
+                    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+                    if hum:GetState() == Enum.HumanoidStateType.Dead then
+                        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
                     end
                 end
             end)
         end
-        task.wait(2)
+        task.wait(0.15)
     end
 end)
 
@@ -798,4 +879,4 @@ task.spawn(function()
     end
 end)
 
-print("[ASURA] v8  •  Smaller  •  Minimize  •  Better Fly  •  Custom Speed  •  VC Bypass")
+print("[ASURA] v9  •  Smooth Fly  •  Reanimation  •  Clean Minimize")
