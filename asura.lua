@@ -1,6 +1,6 @@
 --[[
-    ASURA Troller v10
-    Clean Main Section • Better Fonts • Fixed Fly (no stuck)
+    ASURA Troller v11
+    VC Bypass visible • Zero-delay Fling • Clean UI
 ]]
 
 local Players = game:GetService("Players")
@@ -32,6 +32,7 @@ local S = {
     Sel = {}, Fling = false, Spam = false, Noclip = false,
     AntiAFK = true, AntiSit = true, Fly = false, Speed = false,
     InfJump = false, ESP = false, ClickTP = false, Reanim = false,
+    VCBypass = false,
     Delay = 2.5, MsgCount = 0, Angle = 0, Symbols = "",
     SpeedVal = 50, FlySpeed = 60, Minimized = false
 }
@@ -60,9 +61,6 @@ SG.ResetOnSpawn = false
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SG.Parent = (typeof(gethui) == "function" and gethui()) or CG
 
--------------------------------------------------
--- MAIN
--------------------------------------------------
 local Main = Instance.new("Frame", SG)
 Main.Size = UDim2.new(0, 0, 0, 0)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -75,10 +73,8 @@ local ms = Instance.new("UIStroke", Main)
 ms.Color = C.Acc
 ms.Thickness = 1.2
 ms.Transparency = 0.45
+tw(Main, {Size = UDim2.new(0, 340, 0, 450)}, 0.35, Enum.EasingStyle.Back)
 
-tw(Main, {Size = UDim2.new(0, 340, 0, 420)}, 0.35, Enum.EasingStyle.Back)
-
--- Top
 local Top = Instance.new("Frame", Main)
 Top.Size = UDim2.new(1, 0, 0, 42)
 Top.BackgroundColor3 = C.Card
@@ -89,7 +85,6 @@ tf.Size = UDim2.new(1, 0, 0, 14)
 tf.Position = UDim2.new(0, 0, 1, -14)
 tf.BackgroundColor3 = C.Card
 tf.BorderSizePixel = 0
-
 local al = Instance.new("Frame", Top)
 al.Size = UDim2.new(0, 0, 0, 2)
 al.Position = UDim2.new(0, 0, 1, -2)
@@ -136,9 +131,7 @@ Close.MouseButton1Click:Connect(function()
     task.wait(0.25) SG:Destroy()
 end)
 
--------------------------------------------------
--- MINIMIZE (kept exactly as before)
--------------------------------------------------
+-- Minimize (same as before)
 local MiniBar = Instance.new("Frame", SG)
 MiniBar.Size = UDim2.new(0, 140, 0, 36)
 MiniBar.Position = UDim2.new(0.5, -70, 0, 20)
@@ -151,7 +144,6 @@ local mbs = Instance.new("UIStroke", MiniBar)
 mbs.Color = C.Acc
 mbs.Thickness = 1.2
 mbs.Transparency = 0.35
-
 local miniTitle = Instance.new("TextLabel", MiniBar)
 miniTitle.Size = UDim2.new(1, -40, 1, 0)
 miniTitle.Position = UDim2.new(0, 14, 0, 0)
@@ -161,7 +153,6 @@ miniTitle.Font = Enum.Font.GothamBlack
 miniTitle.TextSize = 13
 miniTitle.TextColor3 = C.Soft
 miniTitle.TextXAlignment = Enum.TextXAlignment.Left
-
 local expandBtn = Instance.new("TextButton", MiniBar)
 expandBtn.Size = UDim2.new(0, 28, 0, 28)
 expandBtn.Position = UDim2.new(1, -32, 0.5, -14)
@@ -199,10 +190,9 @@ local function setMinimized(state)
         MiniBar.Visible = false
         Main.Visible = true
         Main.Size = UDim2.new(0, 0, 0, 0)
-        tw(Main, {Size = UDim2.new(0, 340, 0, 420)}, 0.3, Enum.EasingStyle.Back)
+        tw(Main, {Size = UDim2.new(0, 340, 0, 450)}, 0.3, Enum.EasingStyle.Back)
     end
 end
-
 MinBtn.MouseButton1Click:Connect(function() setMinimized(true) end)
 expandBtn.MouseButton1Click:Connect(function() setMinimized(false) end)
 
@@ -222,9 +212,7 @@ UIS.InputChanged:Connect(function(i)
     end
 end)
 
--------------------------------------------------
--- TABS (top style - cleaner)
--------------------------------------------------
+-- Tabs
 local TabBar = Instance.new("Frame", Main)
 TabBar.Size = UDim2.new(1, -20, 0, 32)
 TabBar.Position = UDim2.new(0, 10, 0, 48)
@@ -232,7 +220,6 @@ TabBar.BackgroundTransparency = 1
 
 local Tabs = {"MAIN", "FLING", "SPAM"}
 local Btns, Pages = {}, {}
-
 for i, name in ipairs(Tabs) do
     local b = Instance.new("TextButton", TabBar)
     b.Size = UDim2.new(1/3, -4, 1, 0)
@@ -244,7 +231,6 @@ for i, name in ipairs(Tabs) do
     b.TextColor3 = C.Dim
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
     Btns[name] = b
-
     local p = Instance.new("Frame", Main)
     p.Size = UDim2.new(1, -20, 1, -90)
     p.Position = UDim2.new(0, 10, 0, 86)
@@ -252,7 +238,6 @@ for i, name in ipairs(Tabs) do
     p.Visible = (i == 1)
     Pages[name] = p
 end
-
 local function switch(name)
     for k, p in pairs(Pages) do
         p.Visible = (k == name)
@@ -265,9 +250,6 @@ for name, b in pairs(Btns) do
 end
 switch("MAIN")
 
--------------------------------------------------
--- HELPERS
--------------------------------------------------
 local function section(parent, title, y)
     local l = Instance.new("TextLabel", parent)
     l.Size = UDim2.new(1, 0, 0, 18)
@@ -283,12 +265,11 @@ end
 
 local function toggle(parent, text, y, def, cb)
     local row = Instance.new("Frame", parent)
-    row.Size = UDim2.new(1, 0, 0, 34)
+    row.Size = UDim2.new(1, 0, 0, 32)
     row.Position = UDim2.new(0, 0, 0, y)
     row.BackgroundColor3 = C.Card
     row.BorderSizePixel = 0
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
-
     local lbl = Instance.new("TextLabel", row)
     lbl.Size = UDim2.new(0.7, 0, 1, 0)
     lbl.Position = UDim2.new(0, 12, 0, 0)
@@ -298,7 +279,6 @@ local function toggle(parent, text, y, def, cb)
     lbl.TextSize = 13
     lbl.TextColor3 = C.Text
     lbl.TextXAlignment = Enum.TextXAlignment.Left
-
     local btn = Instance.new("TextButton", row)
     btn.Size = UDim2.new(0, 52, 0, 22)
     btn.Position = UDim2.new(1, -62, 0.5, -11)
@@ -308,7 +288,6 @@ local function toggle(parent, text, y, def, cb)
     btn.TextSize = 11
     btn.TextColor3 = def and C.Text or C.Dim
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-
     local on = def
     btn.MouseButton1Click:Connect(function()
         on = not on
@@ -316,7 +295,7 @@ local function toggle(parent, text, y, def, cb)
         btn.Text = on and "ON" or "OFF"
         if cb then cb(on) end
     end)
-    return row, btn
+    return row
 end
 
 local function bigBtn(parent, text, y, col)
@@ -352,21 +331,18 @@ local function inp(parent, ph, y, def)
 end
 
 -------------------------------------------------
--- MAIN PAGE (all the useful toggles)
+-- MAIN PAGE
 -------------------------------------------------
 local MP = Pages.MAIN
-
 section(MP, "MOVEMENT", 0)
-toggle(MP, "Fly", 22, false, function(v) S.Fly = v end)
+toggle(MP, "Fly", 20, false, function(v) S.Fly = v end)
 
--- Speed with input
 local speedRow = Instance.new("Frame", MP)
-speedRow.Size = UDim2.new(1, 0, 0, 34)
-speedRow.Position = UDim2.new(0, 0, 0, 60)
+speedRow.Size = UDim2.new(1, 0, 0, 32)
+speedRow.Position = UDim2.new(0, 0, 0, 56)
 speedRow.BackgroundColor3 = C.Card
 speedRow.BorderSizePixel = 0
 Instance.new("UICorner", speedRow).CornerRadius = UDim.new(0, 8)
-
 local speedLbl = Instance.new("TextLabel", speedRow)
 speedLbl.Size = UDim2.new(0.4, 0, 1, 0)
 speedLbl.Position = UDim2.new(0, 12, 0, 0)
@@ -376,7 +352,6 @@ speedLbl.Font = Enum.Font.GothamMedium
 speedLbl.TextSize = 13
 speedLbl.TextColor3 = C.Text
 speedLbl.TextXAlignment = Enum.TextXAlignment.Left
-
 local speedBox = Instance.new("TextBox", speedRow)
 speedBox.Size = UDim2.new(0, 48, 0, 22)
 speedBox.Position = UDim2.new(0.42, 0, 0.5, -11)
@@ -391,7 +366,6 @@ speedBox.FocusLost:Connect(function()
     local n = tonumber(speedBox.Text)
     if n and n > 0 then S.SpeedVal = math.clamp(n, 1, 500) speedBox.Text = tostring(S.SpeedVal) end
 end)
-
 local speedBtn = Instance.new("TextButton", speedRow)
 speedBtn.Size = UDim2.new(0, 52, 0, 22)
 speedBtn.Position = UDim2.new(1, -62, 0.5, -11)
@@ -409,14 +383,15 @@ speedBtn.MouseButton1Click:Connect(function()
     speedBtn.Text = speedOn and "ON" or "OFF"
 end)
 
-toggle(MP, "Infinite Jump", 98, false, function(v) S.InfJump = v end)
-toggle(MP, "Noclip", 136, false, function(v) S.Noclip = v end)
-toggle(MP, "Click TP", 174, false, function(v) S.ClickTP = v end)
+toggle(MP, "Infinite Jump", 92, false, function(v) S.InfJump = v end)
+toggle(MP, "Noclip", 128, false, function(v) S.Noclip = v end)
+toggle(MP, "Click TP", 164, false, function(v) S.ClickTP = v end)
 
-section(MP, "PROTECTION", 216)
-toggle(MP, "Anti AFK", 238, true, function(v) S.AntiAFK = v end)
-toggle(MP, "Anti Sit", 276, true, function(v) S.AntiSit = v end)
-toggle(MP, "Reanimation", 314, false, function(v) S.Reanim = v end)
+section(MP, "PROTECTION", 204)
+toggle(MP, "Anti AFK", 224, true, function(v) S.AntiAFK = v end)
+toggle(MP, "Anti Sit", 260, true, function(v) S.AntiSit = v end)
+toggle(MP, "Reanimation", 296, false, function(v) S.Reanim = v end)
+toggle(MP, "VC Bypass", 332, false, function(v) S.VCBypass = v end)
 
 -------------------------------------------------
 -- FLING PAGE
@@ -425,7 +400,7 @@ local FP = Pages.FLING
 local search = inp(FP, "Search players...", 0)
 
 local list = Instance.new("ScrollingFrame", FP)
-list.Size = UDim2.new(1, 0, 0, 175)
+list.Size = UDim2.new(1, 0, 0, 200)
 list.Position = UDim2.new(0, 0, 0, 36)
 list.BackgroundColor3 = C.Card
 list.BorderSizePixel = 0
@@ -461,7 +436,6 @@ local function makeRow(pl)
     r.Text = ""
     r.AutoButtonColor = false
     Instance.new("UICorner", r).CornerRadius = UDim.new(0, 6)
-
     local nl = Instance.new("TextLabel", r)
     nl.Size = UDim2.new(1, -58, 1, 0)
     nl.Position = UDim2.new(0, 10, 0, 0)
@@ -472,7 +446,6 @@ local function makeRow(pl)
     nl.TextColor3 = C.Text
     nl.TextXAlignment = Enum.TextXAlignment.Left
     nl.TextTruncate = Enum.TextTruncate.AtEnd
-
     local st = Instance.new("TextLabel", r)
     st.Size = UDim2.new(0, 48, 1, 0)
     st.Position = UDim2.new(1, -52, 0, 0)
@@ -481,7 +454,6 @@ local function makeRow(pl)
     st.Font = Enum.Font.GothamBold
     st.TextSize = 10
     st.TextColor3 = C.Green
-
     r.MouseButton1Click:Connect(function()
         if S.Sel[pl] then
             S.Sel[pl] = nil
@@ -503,8 +475,8 @@ search:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 local fCtrl = Instance.new("Frame", FP)
-fCtrl.Size = UDim2.new(1, 0, 0, 40)
-fCtrl.Position = UDim2.new(0, 0, 0, 218)
+fCtrl.Size = UDim2.new(1, 0, 0, 36)
+fCtrl.Position = UDim2.new(0, 0, 0, 244)
 fCtrl.BackgroundTransparency = 1
 
 SelLabel = Instance.new("TextLabel", fCtrl)
@@ -544,7 +516,7 @@ allB.MouseButton1Click:Connect(function()
     updCount()
 end)
 
-local flingBtn = bigBtn(FP, "FLING  •  OFF", 262, C.Acc)
+local flingBtn = bigBtn(FP, "FLING  •  OFF", 288, C.Acc)
 flingBtn.MouseButton1Click:Connect(function()
     S.Fling = not S.Fling
     flingBtn.Text = S.Fling and "FLING  •  ON" or "FLING  •  OFF"
@@ -560,12 +532,11 @@ local delayBox = inp(SP, "Delay (seconds)", 36, "2.5")
 local symBox = inp(SP, "Symbols  @#!$%", 72)
 
 local msgCard = Instance.new("Frame", SP)
-msgCard.Size = UDim2.new(1, 0, 0, 145)
+msgCard.Size = UDim2.new(1, 0, 0, 160)
 msgCard.Position = UDim2.new(0, 0, 0, 110)
 msgCard.BackgroundColor3 = C.Card
 msgCard.BorderSizePixel = 0
 Instance.new("UICorner", msgCard).CornerRadius = UDim.new(0, 8)
-
 local msgTitle = Instance.new("TextLabel", msgCard)
 msgTitle.Size = UDim2.new(1, -12, 0, 20)
 msgTitle.Position = UDim2.new(0, 10, 0, 4)
@@ -575,7 +546,6 @@ msgTitle.Font = Enum.Font.GothamMedium
 msgTitle.TextSize = 11
 msgTitle.TextColor3 = C.Dim
 msgTitle.TextXAlignment = Enum.TextXAlignment.Left
-
 local msgList = Instance.new("ScrollingFrame", msgCard)
 msgList.Size = UDim2.new(1, -8, 1, -28)
 msgList.Position = UDim2.new(0, 4, 0, 24)
@@ -597,7 +567,7 @@ for _, m in ipairs(SpamMsgs) do
 end
 msgList.CanvasSize = UDim2.new(0, 0, 0, #SpamMsgs * 19 + 4)
 
-local spamBtn = bigBtn(SP, "SPAM  •  OFF", 268, C.Acc)
+local spamBtn = bigBtn(SP, "SPAM  •  OFF", 284, C.Acc)
 spamBtn.MouseButton1Click:Connect(function()
     S.Spam = not S.Spam
     if S.Spam then
@@ -688,34 +658,42 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Orbit Fling
-task.spawn(function()
-    while true do
-        if S.Fling then
-            local my = getRoot(LP.Character)
-            if my then
-                for pl in pairs(S.Sel) do
-                    if pl.Parent and pl.Character then
-                        local tr = getRoot(pl.Character)
-                        if tr then
-                            S.Angle = S.Angle + 0.4
-                            local r = 1.5 + math.sin(S.Angle * 2.2) * 3.5
-                            pcall(function()
-                                my.CFrame = tr.CFrame * CFrame.Angles(0, S.Angle, 0) * CFrame.new(0, 0, r)
-                                tr.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
-                                tr.AssemblyLinearVelocity = Vector3.new(math.random(-120,120), 180 + math.random(0,80), math.random(-120,120))
-                            end)
-                        end
-                    end
-                end
+-------------------------------------------------
+-- ZERO DELAY FLING (Heartbeat - no task.wait)
+-------------------------------------------------
+RunService.Heartbeat:Connect(function()
+    if not S.Fling then return end
+    local my = getRoot(LP.Character)
+    if not my then return end
+
+    for pl in pairs(S.Sel) do
+        if pl.Parent and pl.Character then
+            local tr = getRoot(pl.Character)
+            if tr then
+                S.Angle = S.Angle + 0.55
+                local r = 1.2 + math.sin(S.Angle * 2.5) * 3.2
+                pcall(function()
+                    -- teleport inside / around target every frame
+                    my.CFrame = tr.CFrame * CFrame.Angles(0, S.Angle, 0) * CFrame.new(0, 0, r)
+                    -- hard fling force
+                    tr.AssemblyAngularVelocity = Vector3.new(
+                        math.random(-99999, 99999),
+                        99999,
+                        math.random(-99999, 99999)
+                    )
+                    tr.AssemblyLinearVelocity = Vector3.new(
+                        math.random(-250, 250),
+                        300 + math.random(0, 150),
+                        math.random(-250, 250)
+                    )
+                end)
             end
-            task.wait(0.02)
-        else task.wait(0.1) end
+        end
     end
 end)
 
 -------------------------------------------------
--- FIXED FLY (no stuck)
+-- FLY (fixed)
 -------------------------------------------------
 local flyBV, flyBG, flyConn
 local currentVel = Vector3.zero
@@ -746,17 +724,14 @@ local function startFly()
     local root = getRoot(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
-
     hum.PlatformStand = true
     currentVel = Vector3.zero
-
     flyBV = Instance.new("BodyVelocity")
     flyBV.Name = "AsuraFlyBV"
     flyBV.MaxForce = Vector3.new(40000, 40000, 40000)
     flyBV.Velocity = Vector3.zero
     flyBV.P = 1250
     flyBV.Parent = root
-
     flyBG = Instance.new("BodyGyro")
     flyBG.Name = "AsuraFlyBG"
     flyBG.MaxTorque = Vector3.new(40000, 40000, 40000)
@@ -764,14 +739,9 @@ local function startFly()
     flyBG.D = 500
     flyBG.CFrame = root.CFrame
     flyBG.Parent = root
-
     flyConn = RunService.RenderStepped:Connect(function(dt)
         if not S.Fly then return end
-        if not root or not root.Parent then
-            cleanupFly()
-            return
-        end
-
+        if not root or not root.Parent then cleanupFly() return end
         local cam = workspace.CurrentCamera
         local move = Vector3.zero
         if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
@@ -782,20 +752,15 @@ local function startFly()
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
             move = move + Vector3.new(0, -1, 0)
         end
-
         local target = move.Magnitude > 0 and move.Unit * S.FlySpeed or Vector3.zero
         currentVel = currentVel:Lerp(target, math.clamp(dt * 10, 0, 1))
-
-        if flyBV and flyBV.Parent then
-            flyBV.Velocity = currentVel
-        end
+        if flyBV and flyBV.Parent then flyBV.Velocity = currentVel end
         if flyBG and flyBG.Parent then
             flyBG.CFrame = flyBG.CFrame:Lerp(CFrame.new(root.Position, root.Position + cam.CFrame.LookVector), math.clamp(dt * 8, 0, 1))
         end
     end)
 end
 
--- Watch fly toggle carefully
 task.spawn(function()
     local was = false
     while SG.Parent do
@@ -806,15 +771,14 @@ task.spawn(function()
             cleanupFly()
             was = false
         end
-        -- if character respawns while flying, restart
-        if S.Fly and was and LP.Character and not getRoot(LP.Character):FindFirstChild("AsuraFlyBV") then
-            startFly()
+        if S.Fly and was and LP.Character then
+            local root = getRoot(LP.Character)
+            if root and not root:FindFirstChild("AsuraFlyBV") then startFly() end
         end
         task.wait(0.1)
     end
 end)
 
--- Speed
 RunService.Heartbeat:Connect(function()
     if S.Speed and LP.Character then
         local h = LP.Character:FindFirstChildOfClass("Humanoid")
@@ -836,7 +800,6 @@ Mouse.Button1Down:Connect(function()
     end
 end)
 
--- Reanimation
 task.spawn(function()
     while SG.Parent do
         if S.Reanim and LP.Character then
@@ -857,33 +820,19 @@ task.spawn(function()
     end
 end)
 
--- ESP
-local ESPFolder = Instance.new("Folder", SG)
-ESPFolder.Name = "ESP"
+-- VC Bypass attempt
 task.spawn(function()
     while SG.Parent do
-        for _, c in ipairs(ESPFolder:GetChildren()) do c:Destroy() end
-        if S.ESP then
-            for _, pl in ipairs(Players:GetPlayers()) do
-                if pl ~= LP and pl.Character and pl.Character:FindFirstChild("Head") then
-                    local bb = Instance.new("BillboardGui", ESPFolder)
-                    bb.Adornee = pl.Character.Head
-                    bb.Size = UDim2.new(0, 100, 0, 24)
-                    bb.StudsOffset = Vector3.new(0, 2.3, 0)
-                    bb.AlwaysOnTop = true
-                    local tl = Instance.new("TextLabel", bb)
-                    tl.Size = UDim2.new(1, 0, 1, 0)
-                    tl.BackgroundTransparency = 1
-                    tl.Text = pl.Name
-                    tl.Font = Enum.Font.GothamBold
-                    tl.TextSize = 12
-                    tl.TextColor3 = C.Soft
-                    tl.TextStrokeTransparency = 0.4
+        if S.VCBypass then
+            pcall(function()
+                local vs = game:GetService("VoiceChatService")
+                if vs then
+                    pcall(function() vs:joinVoice() end)
                 end
-            end
+            end)
         end
-        task.wait(1)
+        task.wait(2)
     end
 end)
 
-print("[ASURA] v10  •  Clean Main  •  Fixed Fly  •  Same Minimize")
+print("[ASURA] v11  •  VC Bypass  •  Zero-delay Fling")
