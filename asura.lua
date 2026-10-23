@@ -1,6 +1,6 @@
 --[[
-    ASURA Troller v7
-    Clean Purple/Black UI • Animated • Completely Redesigned
+    ASURA Troller v8
+    Smaller • Minimize • Better Fly • Custom Speed • VC Bypass
 ]]
 
 local Players = game:GetService("Players")
@@ -15,26 +15,25 @@ local TS = game:GetService("TeleportService")
 local LP = Players.LocalPlayer
 local Mouse = LP:GetMouse()
 
--- Purple / Black theme
 local C = {
-    Bg = Color3.fromRGB(12, 10, 18),
-    Card = Color3.fromRGB(20, 16, 30),
-    Card2 = Color3.fromRGB(28, 22, 42),
-    Accent = Color3.fromRGB(140, 70, 255),
-    Accent2 = Color3.fromRGB(100, 40, 200),
-    Soft = Color3.fromRGB(180, 130, 255),
+    Bg = Color3.fromRGB(10, 8, 16),
+    Card = Color3.fromRGB(18, 14, 28),
+    Card2 = Color3.fromRGB(26, 20, 40),
+    Acc = Color3.fromRGB(145, 75, 255),
+    Acc2 = Color3.fromRGB(105, 45, 210),
+    Soft = Color3.fromRGB(185, 140, 255),
     Text = Color3.fromRGB(245, 240, 255),
-    Dim = Color3.fromRGB(130, 120, 150),
-    Green = Color3.fromRGB(80, 220, 140),
-    Red = Color3.fromRGB(220, 70, 90)
+    Dim = Color3.fromRGB(125, 115, 145),
+    Green = Color3.fromRGB(70, 210, 130),
+    Red = Color3.fromRGB(220, 65, 85)
 }
 
 local S = {
     Sel = {}, Fling = false, Spam = false, Noclip = false,
     AntiAFK = true, AntiSit = true, Fly = false, Speed = false,
-    InfJump = false, ESP = false, ClickTP = false,
+    InfJump = false, ESP = false, ClickTP = false, VCBypass = false,
     Delay = 2.5, MsgCount = 0, Angle = 0, Symbols = "",
-    SpeedVal = 50, FlySpeed = 50
+    SpeedVal = 50, FlySpeed = 60, Minimized = false
 }
 
 local SpamMsgs = {
@@ -44,16 +43,15 @@ local SpamMsgs = {
     "ASURA DOMINATING", "L + RATIO + ASURA", "ASURA TOO COLD 🥶"
 }
 
--- Cleanup
 pcall(function()
     if CG:FindFirstChild("AsuraUI") then CG.AsuraUI:Destroy() end
     if typeof(gethui) == "function" and gethui():FindFirstChild("AsuraUI") then gethui().AsuraUI:Destroy() end
 end)
 
-local function tween(obj, props, time, style, dir)
-    local t = TweenService:Create(obj, TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
-    t:Play()
-    return t
+local function tw(o, p, t, s, d)
+    local a = TweenService:Create(o, TweenInfo.new(t or 0.22, s or Enum.EasingStyle.Quad, d or Enum.EasingDirection.Out), p)
+    a:Play()
+    return a
 end
 
 local SG = Instance.new("ScreenGui")
@@ -62,7 +60,7 @@ SG.ResetOnSpawn = false
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SG.Parent = (typeof(gethui) == "function" and gethui()) or CG
 
--- Main window
+-- Main (smaller)
 local Main = Instance.new("Frame", SG)
 Main.Size = UDim2.new(0, 0, 0, 0)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -70,79 +68,91 @@ Main.AnchorPoint = Vector2.new(0.5, 0.5)
 Main.BackgroundColor3 = C.Bg
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 14)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+local ms = Instance.new("UIStroke", Main)
+ms.Color = C.Acc
+ms.Thickness = 1.2
+ms.Transparency = 0.45
 
-local mainStroke = Instance.new("UIStroke", Main)
-mainStroke.Color = C.Accent
-mainStroke.Thickness = 1.5
-mainStroke.Transparency = 0.5
-
--- Open animation
-tween(Main, {Size = UDim2.new(0, 380, 0, 460)}, 0.4, Enum.EasingStyle.Back)
+tw(Main, {Size = UDim2.new(0, 320, 0, 400)}, 0.35, Enum.EasingStyle.Back)
 
 -- Top bar
 local Top = Instance.new("Frame", Main)
-Top.Size = UDim2.new(1, 0, 0, 48)
+Top.Size = UDim2.new(1, 0, 0, 40)
 Top.BackgroundColor3 = C.Card
 Top.BorderSizePixel = 0
-Instance.new("UICorner", Top).CornerRadius = UDim.new(0, 14)
-local topFix = Instance.new("Frame", Top)
-topFix.Size = UDim2.new(1, 0, 0, 16)
-topFix.Position = UDim2.new(0, 0, 1, -16)
-topFix.BackgroundColor3 = C.Card
-topFix.BorderSizePixel = 0
+Instance.new("UICorner", Top).CornerRadius = UDim.new(0, 12)
+local tf = Instance.new("Frame", Top)
+tf.Size = UDim2.new(1, 0, 0, 12)
+tf.Position = UDim2.new(0, 0, 1, -12)
+tf.BackgroundColor3 = C.Card
+tf.BorderSizePixel = 0
 
--- Accent line under top
-local accentLine = Instance.new("Frame", Top)
-accentLine.Size = UDim2.new(0, 0, 0, 2)
-accentLine.Position = UDim2.new(0, 0, 1, -2)
-accentLine.BackgroundColor3 = C.Accent
-accentLine.BorderSizePixel = 0
-tween(accentLine, {Size = UDim2.new(1, 0, 0, 2)}, 0.6, Enum.EasingStyle.Quad)
+local al = Instance.new("Frame", Top)
+al.Size = UDim2.new(0, 0, 0, 1.5)
+al.Position = UDim2.new(0, 0, 1, -1.5)
+al.BackgroundColor3 = C.Acc
+al.BorderSizePixel = 0
+tw(al, {Size = UDim2.new(1, 0, 0, 1.5)}, 0.5)
 
 local Title = Instance.new("TextLabel", Top)
-Title.Size = UDim2.new(1, -60, 1, 0)
-Title.Position = UDim2.new(0, 18, 0, 0)
+Title.Size = UDim2.new(1, -80, 1, 0)
+Title.Position = UDim2.new(0, 14, 0, 0)
 Title.BackgroundTransparency = 1
 Title.Text = "ASURA"
 Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 18
+Title.TextSize = 15
 Title.TextColor3 = C.Soft
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
-local Sub = Instance.new("TextLabel", Top)
-Sub.Size = UDim2.new(0, 80, 0, 16)
-Sub.Position = UDim2.new(0, 90, 0.5, -2)
-Sub.BackgroundTransparency = 1
-Sub.Text = "TROLLER"
-Sub.Font = Enum.Font.Gotham
-Sub.TextSize = 11
-Sub.TextColor3 = C.Dim
-Sub.TextXAlignment = Enum.TextXAlignment.Left
+-- Minimize
+local MinBtn = Instance.new("TextButton", Top)
+MinBtn.Size = UDim2.new(0, 24, 0, 24)
+MinBtn.Position = UDim2.new(1, -56, 0.5, -12)
+MinBtn.BackgroundColor3 = C.Card2
+MinBtn.Text = "–"
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 16
+MinBtn.TextColor3 = C.Dim
+Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 6)
+MinBtn.MouseEnter:Connect(function() tw(MinBtn, {BackgroundColor3 = C.Acc2, TextColor3 = C.Text}) end)
+MinBtn.MouseLeave:Connect(function() tw(MinBtn, {BackgroundColor3 = C.Card2, TextColor3 = C.Dim}) end)
 
 local Close = Instance.new("TextButton", Top)
-Close.Size = UDim2.new(0, 28, 0, 28)
-Close.Position = UDim2.new(1, -38, 0.5, -14)
+Close.Size = UDim2.new(0, 24, 0, 24)
+Close.Position = UDim2.new(1, -28, 0.5, -12)
 Close.BackgroundColor3 = C.Card2
 Close.Text = "✕"
 Close.Font = Enum.Font.GothamBold
-Close.TextSize = 13
+Close.TextSize = 11
 Close.TextColor3 = C.Dim
-Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 8)
-Close.MouseEnter:Connect(function() tween(Close, {BackgroundColor3 = C.Red, TextColor3 = C.Text}) end)
-Close.MouseLeave:Connect(function() tween(Close, {BackgroundColor3 = C.Card2, TextColor3 = C.Dim}) end)
+Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 6)
+Close.MouseEnter:Connect(function() tw(Close, {BackgroundColor3 = C.Red, TextColor3 = C.Text}) end)
+Close.MouseLeave:Connect(function() tw(Close, {BackgroundColor3 = C.Card2, TextColor3 = C.Dim}) end)
 Close.MouseButton1Click:Connect(function()
     S.Fling = false S.Spam = false S.Fly = false
-    tween(Main, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-    task.wait(0.3)
-    SG:Destroy()
+    tw(Main, {Size = UDim2.new(0, 0, 0, 0)}, 0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    task.wait(0.25) SG:Destroy()
 end)
 
--- Dragging
-local drag, dStart, sPos
+local fullSize = UDim2.new(0, 320, 0, 400)
+local miniSize = UDim2.new(0, 320, 0, 40)
+MinBtn.MouseButton1Click:Connect(function()
+    S.Minimized = not S.Minimized
+    if S.Minimized then
+        tw(Main, {Size = miniSize}, 0.3, Enum.EasingStyle.Quad)
+        MinBtn.Text = "+"
+    else
+        tw(Main, {Size = fullSize}, 0.3, Enum.EasingStyle.Quad)
+        MinBtn.Text = "–"
+    end
+end)
+
+-- Drag
+local drag, ds, sp
 Top.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-        drag = true dStart = i.Position sPos = Main.Position
+        drag = true ds = i.Position sp = Main.Position
     end
 end)
 Top.InputEnded:Connect(function(i)
@@ -150,58 +160,57 @@ Top.InputEnded:Connect(function(i)
 end)
 UIS.InputChanged:Connect(function(i)
     if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-        local d = i.Position - dStart
-        Main.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y)
+        local d = i.Position - ds
+        Main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
     end
 end)
 
--- Side nav
+-- Side nav (compact)
 local Nav = Instance.new("Frame", Main)
-Nav.Size = UDim2.new(0, 70, 1, -56)
-Nav.Position = UDim2.new(0, 8, 0, 52)
+Nav.Size = UDim2.new(0, 56, 1, -48)
+Nav.Position = UDim2.new(0, 6, 0, 44)
 Nav.BackgroundColor3 = C.Card
 Nav.BorderSizePixel = 0
-Instance.new("UICorner", Nav).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", Nav).CornerRadius = UDim.new(0, 10)
 
-local NavLayout = Instance.new("UIListLayout", Nav)
-NavLayout.Padding = UDim.new(0, 6)
-NavLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-local NavPad = Instance.new("UIPadding", Nav)
-NavPad.PaddingTop = UDim.new(0, 10)
+local NL = Instance.new("UIListLayout", Nav)
+NL.Padding = UDim.new(0, 4)
+NL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local NP = Instance.new("UIPadding", Nav)
+NP.PaddingTop = UDim.new(0, 8)
 
 local Content = Instance.new("Frame", Main)
-Content.Size = UDim2.new(1, -94, 1, -64)
-Content.Position = UDim2.new(0, 86, 0, 56)
+Content.Size = UDim2.new(1, -74, 1, -52)
+Content.Position = UDim2.new(0, 68, 0, 48)
 Content.BackgroundTransparency = 1
 
 local Pages, NavBtns = {}, {}
-local currentPage = "FLING"
 
 local function makeNav(name, icon, order)
     local b = Instance.new("TextButton", Nav)
-    b.Size = UDim2.new(0, 54, 0, 48)
+    b.Size = UDim2.new(0, 44, 0, 42)
     b.BackgroundColor3 = C.Card
     b.Text = ""
     b.AutoButtonColor = false
     b.LayoutOrder = order
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
 
     local ic = Instance.new("TextLabel", b)
-    ic.Size = UDim2.new(1, 0, 0, 22)
-    ic.Position = UDim2.new(0, 0, 0, 6)
+    ic.Size = UDim2.new(1, 0, 0, 20)
+    ic.Position = UDim2.new(0, 0, 0, 4)
     ic.BackgroundTransparency = 1
     ic.Text = icon
-    ic.TextSize = 16
+    ic.TextSize = 14
     ic.Font = Enum.Font.GothamBold
     ic.TextColor3 = C.Dim
 
     local lb = Instance.new("TextLabel", b)
-    lb.Size = UDim2.new(1, 0, 0, 14)
-    lb.Position = UDim2.new(0, 0, 1, -18)
+    lb.Size = UDim2.new(1, 0, 0, 12)
+    lb.Position = UDim2.new(0, 0, 1, -15)
     lb.BackgroundTransparency = 1
     lb.Text = name
     lb.Font = Enum.Font.Gotham
-    lb.TextSize = 9
+    lb.TextSize = 8
     lb.TextColor3 = C.Dim
 
     NavBtns[name] = {btn = b, icon = ic, label = lb}
@@ -213,125 +222,105 @@ local function makeNav(name, icon, order)
     Pages[name] = page
 
     b.MouseButton1Click:Connect(function()
-        for k, v in pairs(Pages) do
-            v.Visible = (k == name)
-        end
+        for k, v in pairs(Pages) do v.Visible = (k == name) end
         for k, v in pairs(NavBtns) do
-            local active = (k == name)
-            tween(v.btn, {BackgroundColor3 = active and C.Accent2 or C.Card}, 0.2)
-            tween(v.icon, {TextColor3 = active and C.Text or C.Dim}, 0.2)
-            tween(v.label, {TextColor3 = active and C.Soft or C.Dim}, 0.2)
+            local a = (k == name)
+            tw(v.btn, {BackgroundColor3 = a and C.Acc2 or C.Card}, 0.18)
+            tw(v.icon, {TextColor3 = a and C.Text or C.Dim}, 0.18)
+            tw(v.label, {TextColor3 = a and C.Soft or C.Dim}, 0.18)
         end
-        currentPage = name
     end)
 end
 
 makeNav("FLING", "⚡", 1)
 makeNav("SPAM", "💬", 2)
 makeNav("MISC", "✦", 3)
-
--- Activate first tab
 Pages.FLING.Visible = true
-NavBtns.FLING.btn.BackgroundColor3 = C.Accent2
+NavBtns.FLING.btn.BackgroundColor3 = C.Acc2
 NavBtns.FLING.icon.TextColor3 = C.Text
 NavBtns.FLING.label.TextColor3 = C.Soft
 
--------------------------------------------------
--- HELPERS
--------------------------------------------------
-local function card(parent, y, h)
-    local f = Instance.new("Frame", parent)
-    f.Size = UDim2.new(1, 0, 0, h or 40)
-    f.Position = UDim2.new(0, 0, 0, y)
-    f.BackgroundColor3 = C.Card
-    f.BorderSizePixel = 0
-    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
-    return f
-end
-
+-- Helpers
 local function pill(parent, text, x, y, w, active, cb)
     local b = Instance.new("TextButton", parent)
-    b.Size = UDim2.new(0, w or 80, 0, 28)
+    b.Size = UDim2.new(0, w or 70, 0, 24)
     b.Position = UDim2.new(0, x, 0, y)
-    b.BackgroundColor3 = active and C.Accent or C.Card2
+    b.BackgroundColor3 = active and C.Acc or C.Card2
     b.Text = text
     b.Font = Enum.Font.GothamBold
-    b.TextSize = 11
+    b.TextSize = 10
     b.TextColor3 = active and C.Text or C.Dim
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
     local on = active
     b.MouseButton1Click:Connect(function()
         on = not on
-        tween(b, {BackgroundColor3 = on and C.Accent or C.Card2, TextColor3 = on and C.Text or C.Dim}, 0.2)
+        tw(b, {BackgroundColor3 = on and C.Acc or C.Card2, TextColor3 = on and C.Text or C.Dim}, 0.15)
         if cb then cb(on) end
     end)
     return b
 end
 
-local function bigBtn(parent, text, y, color)
+local function bigBtn(parent, text, y, col)
     local b = Instance.new("TextButton", parent)
-    b.Size = UDim2.new(1, 0, 0, 38)
+    b.Size = UDim2.new(1, 0, 0, 34)
     b.Position = UDim2.new(0, 0, 0, y)
-    b.BackgroundColor3 = color or C.Accent
+    b.BackgroundColor3 = col or C.Acc
     b.Text = text
     b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
+    b.TextSize = 13
     b.TextColor3 = C.Text
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
-    b.MouseEnter:Connect(function() tween(b, {BackgroundColor3 = C.Soft}, 0.15) end)
-    b.MouseLeave:Connect(function() tween(b, {BackgroundColor3 = color or C.Accent}, 0.15) end)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+    b.MouseEnter:Connect(function() tw(b, {BackgroundColor3 = C.Soft}, 0.12) end)
+    b.MouseLeave:Connect(function() tw(b, {BackgroundColor3 = col or C.Acc}, 0.12) end)
     return b
 end
 
-local function inp(parent, ph, y)
+local function inp(parent, ph, y, def)
     local b = Instance.new("TextBox", parent)
-    b.Size = UDim2.new(1, 0, 0, 32)
+    b.Size = UDim2.new(1, 0, 0, 28)
     b.Position = UDim2.new(0, 0, 0, y)
     b.BackgroundColor3 = C.Card
     b.PlaceholderText = ph
-    b.Text = ""
+    b.Text = def or ""
     b.Font = Enum.Font.Gotham
-    b.TextSize = 12
+    b.TextSize = 11
     b.TextColor3 = C.Text
     b.PlaceholderColor3 = C.Dim
     b.ClearTextOnFocus = false
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-    local p = Instance.new("UIPadding", b)
-    p.PaddingLeft = UDim.new(0, 12)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+    Instance.new("UIPadding", b).PaddingLeft = UDim.new(0, 10)
     return b
 end
 
 -------------------------------------------------
--- FLING PAGE
+-- FLING
 -------------------------------------------------
 local FP = Pages.FLING
-
-local search = inp(FP, "Search players...", 0)
+local search = inp(FP, "Search...", 0)
 
 local list = Instance.new("ScrollingFrame", FP)
-list.Size = UDim2.new(1, 0, 0, 160)
-list.Position = UDim2.new(0, 0, 0, 40)
+list.Size = UDim2.new(1, 0, 0, 140)
+list.Position = UDim2.new(0, 0, 0, 34)
 list.BackgroundColor3 = C.Card
 list.BorderSizePixel = 0
 list.ScrollBarThickness = 3
-list.ScrollBarImageColor3 = C.Accent
+list.ScrollBarImageColor3 = C.Acc
 list.CanvasSize = UDim2.new(0, 0, 0, 0)
 list.ScrollingEnabled = true
-Instance.new("UICorner", list).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", list).CornerRadius = UDim.new(0, 8)
 
 local layout = Instance.new("UIListLayout", list)
 layout.SortOrder = Enum.SortOrder.Name
-layout.Padding = UDim.new(0, 4)
+layout.Padding = UDim.new(0, 3)
 local lpad = Instance.new("UIPadding", list)
-lpad.PaddingTop = UDim.new(0, 6)
-lpad.PaddingLeft = UDim.new(0, 6)
-lpad.PaddingRight = UDim.new(0, 6)
+lpad.PaddingTop = UDim.new(0, 4)
+lpad.PaddingLeft = UDim.new(0, 4)
+lpad.PaddingRight = UDim.new(0, 4)
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    list.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+    list.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 8)
 end)
 
 local Rows, SelLabel = {}
-
 local function updCount()
     local c = 0
     for _ in pairs(S.Sel) do c = c + 1 end
@@ -341,39 +330,39 @@ end
 local function makeRow(pl)
     if Rows[pl] or pl == LP then return end
     local r = Instance.new("TextButton", list)
-    r.Size = UDim2.new(1, -4, 0, 28)
+    r.Size = UDim2.new(1, -4, 0, 24)
     r.BackgroundColor3 = C.Card2
     r.Text = ""
     r.AutoButtonColor = false
-    Instance.new("UICorner", r).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", r).CornerRadius = UDim.new(0, 5)
 
     local nl = Instance.new("TextLabel", r)
-    nl.Size = UDim2.new(1, -70, 1, 0)
-    nl.Position = UDim2.new(0, 10, 0, 0)
+    nl.Size = UDim2.new(1, -58, 1, 0)
+    nl.Position = UDim2.new(0, 8, 0, 0)
     nl.BackgroundTransparency = 1
-    nl.Text = pl.DisplayName ~= pl.Name and (pl.DisplayName .. "  @" .. pl.Name) or pl.Name
+    nl.Text = pl.DisplayName ~= pl.Name and (pl.DisplayName .. " @" .. pl.Name) or pl.Name
     nl.Font = Enum.Font.Gotham
-    nl.TextSize = 12
+    nl.TextSize = 11
     nl.TextColor3 = C.Text
     nl.TextXAlignment = Enum.TextXAlignment.Left
     nl.TextTruncate = Enum.TextTruncate.AtEnd
 
     local st = Instance.new("TextLabel", r)
-    st.Size = UDim2.new(0, 58, 1, 0)
-    st.Position = UDim2.new(1, -62, 0, 0)
+    st.Size = UDim2.new(0, 50, 1, 0)
+    st.Position = UDim2.new(1, -52, 0, 0)
     st.BackgroundTransparency = 1
-    st.Text = "ONLINE"
+    st.Text = "ON"
     st.Font = Enum.Font.GothamBold
-    st.TextSize = 10
+    st.TextSize = 9
     st.TextColor3 = C.Green
 
     r.MouseButton1Click:Connect(function()
         if S.Sel[pl] then
             S.Sel[pl] = nil
-            tween(r, {BackgroundColor3 = C.Card2}, 0.15)
+            tw(r, {BackgroundColor3 = C.Card2}, 0.12)
         else
             S.Sel[pl] = true
-            tween(r, {BackgroundColor3 = C.Accent2}, 0.15)
+            tw(r, {BackgroundColor3 = C.Acc2}, 0.12)
         end
         updCount()
     end)
@@ -388,87 +377,91 @@ search:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 local ctrl = Instance.new("Frame", FP)
-ctrl.Size = UDim2.new(1, 0, 0, 90)
-ctrl.Position = UDim2.new(0, 0, 0, 210)
+ctrl.Size = UDim2.new(1, 0, 0, 80)
+ctrl.Position = UDim2.new(0, 0, 0, 182)
 ctrl.BackgroundTransparency = 1
 
 SelLabel = Instance.new("TextLabel", ctrl)
-SelLabel.Size = UDim2.new(0.4, 0, 0, 20)
+SelLabel.Size = UDim2.new(0.35, 0, 0, 18)
 SelLabel.BackgroundTransparency = 1
 SelLabel.Text = "0 selected"
 SelLabel.Font = Enum.Font.Gotham
-SelLabel.TextSize = 12
+SelLabel.TextSize = 11
 SelLabel.TextColor3 = C.Dim
 SelLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local clearB = pill(ctrl, "Clear", 120, 0, 60, false, function()
-    for pl, d in pairs(Rows) do S.Sel[pl] = nil tween(d.row, {BackgroundColor3 = C.Card2}, 0.1) end
+pill(ctrl, "Clear", 100, 0, 50, false, function()
+    for pl, d in pairs(Rows) do S.Sel[pl] = nil tw(d.row, {BackgroundColor3 = C.Card2}, 0.1) end
     updCount()
 end)
-local allB = pill(ctrl, "All", 186, 0, 50, false, function()
-    for pl, d in pairs(Rows) do if pl.Parent then S.Sel[pl] = true tween(d.row, {BackgroundColor3 = C.Accent2}, 0.1) end end
+pill(ctrl, "All", 156, 0, 40, false, function()
+    for pl, d in pairs(Rows) do if pl.Parent then S.Sel[pl] = true tw(d.row, {BackgroundColor3 = C.Acc2}, 0.1) end end
     updCount()
 end)
 
-pill(ctrl, "Noclip", 0, 30, 80, false, function(v) S.Noclip = v end)
-pill(ctrl, "Anti AFK", 88, 30, 80, true, function(v) S.AntiAFK = v end)
-pill(ctrl, "Anti Sit", 176, 30, 80, true, function(v) S.AntiSit = v end)
+pill(ctrl, "Noclip", 0, 26, 68, false, function(v) S.Noclip = v end)
+pill(ctrl, "AntiAFK", 74, 26, 68, true, function(v) S.AntiAFK = v end)
+pill(ctrl, "AntiSit", 148, 26, 68, true, function(v) S.AntiSit = v end)
 
-local flingBtn = bigBtn(FP, "FLING  •  OFF", 310, C.Accent)
+local flingBtn = bigBtn(FP, "FLING  •  OFF", 270, C.Acc)
 flingBtn.MouseButton1Click:Connect(function()
     S.Fling = not S.Fling
     flingBtn.Text = S.Fling and "FLING  •  ON" or "FLING  •  OFF"
-    tween(flingBtn, {BackgroundColor3 = S.Fling and C.Green or C.Accent}, 0.2)
+    tw(flingBtn, {BackgroundColor3 = S.Fling and C.Green or C.Acc}, 0.18)
 end)
 
 -------------------------------------------------
--- SPAM PAGE
+-- SPAM
 -------------------------------------------------
 local SP = Pages.SPAM
-
 local targetBox = inp(SP, "Target name (optional)", 0)
-local delayBox = inp(SP, "Delay (seconds)", 40)
-delayBox.Text = "2.5"
-local symBox = inp(SP, "Symbols  e.g.  @#!$%", 80)
+local delayBox = inp(SP, "Delay (seconds)", 34, "2.5")
+local symBox = inp(SP, "Symbols  @#!$%", 68)
 
-local msgCard = card(SP, 120, 150)
+local msgCard = Instance.new("Frame", SP)
+msgCard.Size = UDim2.new(1, 0, 0, 130)
+msgCard.Position = UDim2.new(0, 0, 0, 104)
+msgCard.BackgroundColor3 = C.Card
+msgCard.BorderSizePixel = 0
+Instance.new("UICorner", msgCard).CornerRadius = UDim.new(0, 8)
+
 local msgTitle = Instance.new("TextLabel", msgCard)
-msgTitle.Size = UDim2.new(1, -16, 0, 22)
-msgTitle.Position = UDim2.new(0, 12, 0, 6)
+msgTitle.Size = UDim2.new(1, -12, 0, 18)
+msgTitle.Position = UDim2.new(0, 10, 0, 4)
 msgTitle.BackgroundTransparency = 1
-msgTitle.Text = "Messages  (ASURA ON TOP every 25)"
+msgTitle.Text = "Messages (ASURA every 25)"
 msgTitle.Font = Enum.Font.Gotham
-msgTitle.TextSize = 11
+msgTitle.TextSize = 10
 msgTitle.TextColor3 = C.Dim
 msgTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 local msgList = Instance.new("ScrollingFrame", msgCard)
-msgList.Size = UDim2.new(1, -12, 1, -32)
-msgList.Position = UDim2.new(0, 6, 0, 28)
+msgList.Size = UDim2.new(1, -8, 1, -24)
+msgList.Position = UDim2.new(0, 4, 0, 22)
 msgList.BackgroundTransparency = 1
 msgList.ScrollBarThickness = 3
-msgList.ScrollBarImageColor3 = C.Accent
+msgList.ScrollBarImageColor3 = C.Acc
 msgList.ScrollingEnabled = true
 local msgLay = Instance.new("UIListLayout", msgList)
-msgLay.Padding = UDim.new(0, 2)
+msgLay.Padding = UDim.new(0, 1)
 for _, m in ipairs(SpamMsgs) do
     local l = Instance.new("TextLabel", msgList)
-    l.Size = UDim2.new(1, -8, 0, 18)
+    l.Size = UDim2.new(1, -6, 0, 16)
     l.BackgroundTransparency = 1
     l.Text = "  " .. m
     l.Font = Enum.Font.Gotham
-    l.TextSize = 12
+    l.TextSize = 11
     l.TextColor3 = C.Text
     l.TextXAlignment = Enum.TextXAlignment.Left
 end
-msgList.CanvasSize = UDim2.new(0, 0, 0, #SpamMsgs * 20 + 4)
+msgList.CanvasSize = UDim2.new(0, 0, 0, #SpamMsgs * 17 + 4)
 
-local spamBtn = bigBtn(SP, "SPAM  •  OFF", 284, C.Accent)
+local spamBtn = bigBtn(SP, "SPAM  •  OFF", 246, C.Acc)
 spamBtn.MouseButton1Click:Connect(function()
     S.Spam = not S.Spam
     if S.Spam then
         spamBtn.Text = "SPAM  •  ON"
-        tween(spamBtn, {BackgroundColor3 = C.Green}, 0.2)
+        tw(spamBtn, {BackgroundColor3 = C.Green}, 0.18)
         S.Delay = tonumber(delayBox.Text) or 2.5
         S.Symbols = symBox.Text
         S.MsgCount = 0
@@ -497,45 +490,88 @@ spamBtn.MouseButton1Click:Connect(function()
         end)
     else
         spamBtn.Text = "SPAM  •  OFF"
-        tween(spamBtn, {BackgroundColor3 = C.Accent}, 0.2)
+        tw(spamBtn, {BackgroundColor3 = C.Acc}, 0.18)
     end
 end)
 
 -------------------------------------------------
--- MISC PAGE
+-- MISC
 -------------------------------------------------
 local MP = Pages.MISC
 
-local function miscPill(txt, y, def, cb)
+local function miscRow(txt, y, def, cb)
     local b = Instance.new("TextButton", MP)
-    b.Size = UDim2.new(1, 0, 0, 36)
+    b.Size = UDim2.new(1, 0, 0, 30)
     b.Position = UDim2.new(0, 0, 0, y)
-    b.BackgroundColor3 = def and C.Accent or C.Card
-    b.Text = "  " .. txt .. (def and "   ON" or "   OFF")
+    b.BackgroundColor3 = def and C.Acc or C.Card
+    b.Text = "  " .. txt .. (def and "  ON" or "  OFF")
     b.Font = Enum.Font.GothamBold
-    b.TextSize = 13
+    b.TextSize = 12
     b.TextColor3 = def and C.Text or C.Dim
     b.TextXAlignment = Enum.TextXAlignment.Left
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
     local on = def
     b.MouseButton1Click:Connect(function()
         on = not on
-        tween(b, {BackgroundColor3 = on and C.Accent or C.Card, TextColor3 = on and C.Text or C.Dim}, 0.2)
-        b.Text = "  " .. txt .. (on and "   ON" or "   OFF")
+        tw(b, {BackgroundColor3 = on and C.Acc or C.Card, TextColor3 = on and C.Text or C.Dim}, 0.15)
+        b.Text = "  " .. txt .. (on and "  ON" or "  OFF")
         if cb then cb(on) end
     end)
+    return b
 end
 
-miscPill("FLY", 0, false, function(v) S.Fly = v end)
-miscPill("SPEED", 44, false, function(v) S.Speed = v end)
-miscPill("INFINITE JUMP", 88, false, function(v) S.InfJump = v end)
-miscPill("ESP NAMES", 132, false, function(v) S.ESP = v end)
-miscPill("CLICK TP", 176, false, function(v) S.ClickTP = v end)
+miscRow("FLY", 0, false, function(v) S.Fly = v end)
 
-local rejoin = bigBtn(MP, "REJOIN", 230, C.Card2)
+-- Speed with number input
+local speedRow = Instance.new("Frame", MP)
+speedRow.Size = UDim2.new(1, 0, 0, 30)
+speedRow.Position = UDim2.new(0, 0, 0, 36)
+speedRow.BackgroundColor3 = C.Card
+speedRow.BorderSizePixel = 0
+Instance.new("UICorner", speedRow).CornerRadius = UDim.new(0, 7)
+
+local speedToggle = Instance.new("TextButton", speedRow)
+speedToggle.Size = UDim2.new(0.55, 0, 1, 0)
+speedToggle.BackgroundTransparency = 1
+speedToggle.Text = "  SPEED  OFF"
+speedToggle.Font = Enum.Font.GothamBold
+speedToggle.TextSize = 12
+speedToggle.TextColor3 = C.Dim
+speedToggle.TextXAlignment = Enum.TextXAlignment.Left
+local speedOn = false
+speedToggle.MouseButton1Click:Connect(function()
+    speedOn = not speedOn
+    S.Speed = speedOn
+    speedToggle.Text = speedOn and "  SPEED  ON" or "  SPEED  OFF"
+    tw(speedRow, {BackgroundColor3 = speedOn and C.Acc or C.Card}, 0.15)
+    speedToggle.TextColor3 = speedOn and C.Text or C.Dim
+end)
+
+local speedBox = Instance.new("TextBox", speedRow)
+speedBox.Size = UDim2.new(0.38, 0, 0, 22)
+speedBox.Position = UDim2.new(0.58, 0, 0.5, -11)
+speedBox.BackgroundColor3 = C.Card2
+speedBox.Text = "50"
+speedBox.Font = Enum.Font.GothamBold
+speedBox.TextSize = 12
+speedBox.TextColor3 = C.Soft
+speedBox.PlaceholderText = "50"
+speedBox.ClearTextOnFocus = false
+Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 5)
+speedBox.FocusLost:Connect(function()
+    local n = tonumber(speedBox.Text)
+    if n and n > 0 then S.SpeedVal = math.clamp(n, 1, 500) speedBox.Text = tostring(S.SpeedVal) end
+end)
+
+miscRow("INF JUMP", 72, false, function(v) S.InfJump = v end)
+miscRow("ESP NAMES", 108, false, function(v) S.ESP = v end)
+miscRow("CLICK TP", 144, false, function(v) S.ClickTP = v end)
+miscRow("VC BYPASS", 180, false, function(v) S.VCBypass = v end)
+
+local rejoin = bigBtn(MP, "REJOIN", 222, C.Card2)
 rejoin.MouseButton1Click:Connect(function() TS:Teleport(game.PlaceId, LP) end)
 
-local hop = bigBtn(MP, "SERVER HOP", 276, C.Card2)
+local hop = bigBtn(MP, "SERVER HOP", 262, C.Card2)
 hop.MouseButton1Click:Connect(function()
     pcall(function()
         local http = game:GetService("HttpService")
@@ -549,16 +585,6 @@ hop.MouseButton1Click:Connect(function()
     end)
 end)
 
-local tip = Instance.new("TextLabel", MP)
-tip.Size = UDim2.new(1, 0, 0, 40)
-tip.Position = UDim2.new(0, 0, 0, 330)
-tip.BackgroundTransparency = 1
-tip.Text = "Fly: WASD + Space / Ctrl\nClick TP: click ground to teleport"
-tip.Font = Enum.Font.Gotham
-tip.TextSize = 11
-tip.TextColor3 = C.Dim
-tip.TextWrapped = true
-
 -------------------------------------------------
 -- CORE
 -------------------------------------------------
@@ -570,7 +596,7 @@ for _, pl in ipairs(Players:GetPlayers()) do makeRow(pl) end
 Players.PlayerAdded:Connect(function(pl) task.wait(0.3) makeRow(pl) end)
 Players.PlayerRemoving:Connect(function(pl)
     if Rows[pl] then
-        Rows[pl].status.Text = "LEFT"
+        Rows[pl].status.Text = "OFF"
         Rows[pl].status.TextColor3 = C.Red
         Rows[pl].name.TextColor3 = C.Dim
     end
@@ -580,11 +606,11 @@ task.spawn(function()
     while SG.Parent do
         for pl, d in pairs(Rows) do
             if pl.Parent then
-                d.status.Text = "ONLINE"
+                d.status.Text = "ON"
                 d.status.TextColor3 = C.Green
                 d.name.TextColor3 = C.Text
             else
-                d.status.Text = "LEFT"
+                d.status.Text = "OFF"
                 d.status.TextColor3 = C.Red
                 d.name.TextColor3 = C.Dim
             end
@@ -638,45 +664,68 @@ task.spawn(function()
     end
 end)
 
--- Fly
-local flyBV, flyBG
-RunService.RenderStepped:Connect(function()
-    if S.Fly and LP.Character then
-        local root = getRoot(LP.Character)
-        local hum = LP.Character:FindFirstChildOfClass("Humanoid")
-        if root and hum then
-            if not flyBV then
-                flyBV = Instance.new("BodyVelocity")
-                flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-                flyBV.Velocity = Vector3.zero
-                flyBV.Parent = root
-                flyBG = Instance.new("BodyGyro")
-                flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-                flyBG.P = 9e4
-                flyBG.Parent = root
-                hum.PlatformStand = true
-            end
-            local cam = workspace.CurrentCamera
-            local dir = Vector3.zero
-            if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0,1,0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0,1,0) end
-            flyBV.Velocity = dir.Magnitude > 0 and dir.Unit * S.FlySpeed or Vector3.zero
-            flyBG.CFrame = cam.CFrame
+-- Better Fly (smoother)
+local flyBV, flyBG, flyConn
+local function startFly()
+    local root = getRoot(LP.Character)
+    local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+    hum.PlatformStand = true
+    flyBV = Instance.new("BodyVelocity")
+    flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyBV.Velocity = Vector3.zero
+    flyBV.P = 1250
+    flyBV.Parent = root
+    flyBG = Instance.new("BodyGyro")
+    flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyBG.P = 3000
+    flyBG.D = 500
+    flyBG.Parent = root
+
+    flyConn = RunService.RenderStepped:Connect(function()
+        if not S.Fly or not root.Parent then return end
+        local cam = workspace.CurrentCamera
+        local dir = Vector3.zero
+        if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
+
+        local target = dir.Magnitude > 0 and dir.Unit * S.FlySpeed or Vector3.zero
+        -- smooth velocity lerp
+        flyBV.Velocity = flyBV.Velocity:Lerp(target, 0.2)
+        flyBG.CFrame = cam.CFrame
+    end)
+end
+
+local function stopFly()
+    if flyConn then flyConn:Disconnect() flyConn = nil end
+    if flyBV then flyBV:Destroy() flyBV = nil end
+    if flyBG then flyBG:Destroy() flyBG = nil end
+    if LP.Character then
+        local h = LP.Character:FindFirstChildOfClass("Humanoid")
+        if h then h.PlatformStand = false end
+    end
+end
+
+-- Watch fly toggle
+task.spawn(function()
+    local was = false
+    while SG.Parent do
+        if S.Fly and not was then
+            startFly()
+            was = true
+        elseif not S.Fly and was then
+            stopFly()
+            was = false
         end
-    else
-        if flyBV then flyBV:Destroy() flyBV = nil end
-        if flyBG then flyBG:Destroy() flyBG = nil end
-        if LP.Character then
-            local h = LP.Character:FindFirstChildOfClass("Humanoid")
-            if h then h.PlatformStand = false end
-        end
+        task.wait(0.1)
     end
 end)
 
+-- Speed
 RunService.Heartbeat:Connect(function()
     if S.Speed and LP.Character then
         local h = LP.Character:FindFirstChildOfClass("Humanoid")
@@ -698,6 +747,28 @@ Mouse.Button1Down:Connect(function()
     end
 end)
 
+-- VC Bypass (basic method)
+task.spawn(function()
+    while SG.Parent do
+        if S.VCBypass then
+            pcall(function()
+                local vs = game:GetService("VoiceChatService")
+                -- try enable
+                if vs then
+                    pcall(function() vs:joinVoice() end)
+                end
+                -- common bypass pattern used by many scripts
+                for _, v in ipairs(LP:GetDescendants()) do
+                    if v:IsA("Sound") and v.Name:lower():find("voice") then
+                        v.Volume = 1
+                    end
+                end
+            end)
+        end
+        task.wait(2)
+    end
+end)
+
 -- ESP
 local ESPFolder = Instance.new("Folder", SG)
 ESPFolder.Name = "ESP"
@@ -709,15 +780,15 @@ task.spawn(function()
                 if pl ~= LP and pl.Character and pl.Character:FindFirstChild("Head") then
                     local bb = Instance.new("BillboardGui", ESPFolder)
                     bb.Adornee = pl.Character.Head
-                    bb.Size = UDim2.new(0, 120, 0, 28)
-                    bb.StudsOffset = Vector3.new(0, 2.5, 0)
+                    bb.Size = UDim2.new(0, 100, 0, 24)
+                    bb.StudsOffset = Vector3.new(0, 2.3, 0)
                     bb.AlwaysOnTop = true
                     local tl = Instance.new("TextLabel", bb)
                     tl.Size = UDim2.new(1, 0, 1, 0)
                     tl.BackgroundTransparency = 1
                     tl.Text = pl.Name
                     tl.Font = Enum.Font.GothamBold
-                    tl.TextSize = 13
+                    tl.TextSize = 12
                     tl.TextColor3 = C.Soft
                     tl.TextStrokeTransparency = 0.4
                 end
@@ -727,4 +798,4 @@ task.spawn(function()
     end
 end)
 
-print("[ASURA] v7  •  Purple UI  •  Animated")
+print("[ASURA] v8  •  Smaller  •  Minimize  •  Better Fly  •  Custom Speed  •  VC Bypass")
