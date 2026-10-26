@@ -1,6 +1,7 @@
 --[[
-    ASURA Troller v12
-    Scrollable MAIN • Simple Fly (no stuck) • Selected targets panel + LEFT
+    ASURA Troller v14
+    Scrollable MAIN • Velocity Fly + animation • Selected targets panel + LEFT
+    Novoline-core port: working VC Bypass, ESP, Fullbright, Server Hop
 ]]
 
 local Players = game:GetService("Players")
@@ -12,6 +13,9 @@ local CG = game:GetService("CoreGui")
 local VU = game:GetService("VirtualUser")
 local RS = game:GetService("ReplicatedStorage")
 local TS = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local VCS = game:GetService("VoiceChatService")
 local LP = Players.LocalPlayer
 local Mouse = LP:GetMouse()
 
@@ -32,6 +36,7 @@ local S = {
     Sel = {}, Fling = false, Spam = false, Noclip = false,
     AntiAFK = true, AntiSit = true, Fly = false, Speed = false,
     InfJump = false, ClickTP = false, Reanim = false, VCBypass = false,
+    ESP = false, Fullbright = false,
     Delay = 2.5, MsgCount = 0, Angle = 0, Symbols = "",
     SpeedVal = 50, FlySpeed = 50, Minimized = false
 }
@@ -52,6 +57,72 @@ local function tw(o, p, t, s, d)
     local a = TweenService:Create(o, TweenInfo.new(t or 0.2, s or Enum.EasingStyle.Quad, d or Enum.EasingDirection.Out), p)
     a:Play()
     return a
+end
+
+-------------------------------------------------
+-- NOVOLINE-CORE HELPERS
+-------------------------------------------------
+
+-- VC Bypass: JoinVoice() re-adds you to the voice channel, which does not
+-- enforce VC bans. (old code called :joinVoice() lowercase -> nil -> pcall ate it)
+local function vcJoin()
+    pcall(function() VCS:JoinVoice() end)
+end
+
+-- Server Hop
+local function serverHop()
+    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    local ok, res = pcall(function() return game:HttpGet(url) end)
+    if not ok or not res then return end
+    local data
+    pcall(function() data = HttpService:JSONDecode(res) end)
+    if not data or not data.data then return end
+    for _, srv in ipairs(data.data) do
+        if srv.playing < srv.maxPlayers and srv.id ~= game.JobId then
+            pcall(function() TS:TeleportToPlaceInstance(game.PlaceId, srv.id, LP) end)
+            return
+        end
+    end
+end
+
+-- ESP
+local esp = {}
+local function setESP(pl, on)
+    if esp[pl] then
+        if esp[pl].hl then esp[pl].hl:Destroy() end
+        if esp[pl].bg then esp[pl].bg:Destroy() end
+        esp[pl] = nil
+    end
+    if not on then return end
+    local char = pl.Character
+    if not char then return end
+    local hl = Instance.new("Highlight")
+    hl.Name = "AsuraESP"
+    hl.FillColor = C.Acc
+    hl.OutlineColor = C.Soft
+    hl.FillTransparency = 0.6
+    hl.OutlineTransparency = 0.15
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee = char
+    hl.Parent = char
+    local head = char:FindFirstChild("Head") or char
+    local bg = Instance.new("BillboardGui")
+    bg.Name = "AsuraESPName"
+    bg.Size = UDim2.new(0, 150, 0, 20)
+    bg.StudsOffset = Vector3.new(0, 3, 0)
+    bg.AlwaysOnTop = true
+    bg.Adornee = head
+    local tl = Instance.new("TextLabel", bg)
+    tl.Size = UDim2.new(1, 0, 1, 0)
+    tl.BackgroundTransparency = 1
+    tl.Text = pl.DisplayName .. " (@" .. pl.Name .. ")"
+    tl.Font = Enum.Font.GothamBold
+    tl.TextSize = 12
+    tl.TextColor3 = C.Soft
+    tl.TextStrokeTransparency = 0.3
+    tl.TextStrokeColor3 = Color3.new(0, 0, 0)
+    bg.Parent = head
+    esp[pl] = {hl = hl, bg = bg}
 end
 
 local SG = Instance.new("ScreenGui")
@@ -130,7 +201,7 @@ Close.MouseButton1Click:Connect(function()
     task.wait(0.25) SG:Destroy()
 end)
 
--- Minimize (same)
+-- Minimize
 local MiniBar = Instance.new("Frame", SG)
 MiniBar.Size = UDim2.new(0, 140, 0, 36)
 MiniBar.Position = UDim2.new(0.5, -70, 0, 20)
@@ -341,14 +412,46 @@ mainScroll.BorderSizePixel = 0
 mainScroll.ScrollBarThickness = 4
 mainScroll.ScrollBarImageColor3 = C.Acc
 mainScroll.ScrollingEnabled = true
-mainScroll.CanvasSize = UDim2.new(0, 0, 0, 420)
+mainScroll.CanvasSize = UDim2.new(0, 0, 0, 640)
 
 section(mainScroll, "MOVEMENT", 0)
 toggle(mainScroll, "Fly", 20, false, function(v) S.Fly = v end)
 
+-- Fly speed row
+local flyRow = Instance.new("Frame", mainScroll)
+flyRow.Size = UDim2.new(1, -8, 0, 32)
+flyRow.Position = UDim2.new(0, 4, 0, 56)
+flyRow.BackgroundColor3 = C.Card
+flyRow.BorderSizePixel = 0
+Instance.new("UICorner", flyRow).CornerRadius = UDim.new(0, 8)
+local flyLbl = Instance.new("TextLabel", flyRow)
+flyLbl.Size = UDim2.new(0.4, 0, 1, 0)
+flyLbl.Position = UDim2.new(0, 12, 0, 0)
+flyLbl.BackgroundTransparency = 1
+flyLbl.Text = "Fly Speed"
+flyLbl.Font = Enum.Font.GothamMedium
+flyLbl.TextSize = 13
+flyLbl.TextColor3 = C.Text
+flyLbl.TextXAlignment = Enum.TextXAlignment.Left
+local flyBox = Instance.new("TextBox", flyRow)
+flyBox.Size = UDim2.new(0, 60, 0, 22)
+flyBox.Position = UDim2.new(0.42, 0, 0.5, -11)
+flyBox.BackgroundColor3 = C.Card2
+flyBox.Text = "50"
+flyBox.Font = Enum.Font.GothamBold
+flyBox.TextSize = 12
+flyBox.TextColor3 = C.Soft
+flyBox.ClearTextOnFocus = false
+Instance.new("UICorner", flyBox).CornerRadius = UDim.new(0, 5)
+flyBox.FocusLost:Connect(function()
+    local n = tonumber(flyBox.Text)
+    if n and n > 0 then S.FlySpeed = math.clamp(n, 1, 500) flyBox.Text = tostring(S.FlySpeed) end
+end)
+
+-- Speed row
 local speedRow = Instance.new("Frame", mainScroll)
 speedRow.Size = UDim2.new(1, -8, 0, 32)
-speedRow.Position = UDim2.new(0, 4, 0, 56)
+speedRow.Position = UDim2.new(0, 4, 0, 92)
 speedRow.BackgroundColor3 = C.Card
 speedRow.BorderSizePixel = 0
 Instance.new("UICorner", speedRow).CornerRadius = UDim.new(0, 8)
@@ -392,18 +495,25 @@ speedBtn.MouseButton1Click:Connect(function()
     speedBtn.Text = speedOn and "ON" or "OFF"
 end)
 
-toggle(mainScroll, "Infinite Jump", 92, false, function(v) S.InfJump = v end)
-toggle(mainScroll, "Noclip", 128, false, function(v) S.Noclip = v end)
-toggle(mainScroll, "Click TP", 164, false, function(v) S.ClickTP = v end)
+toggle(mainScroll, "Infinite Jump", 128, false, function(v) S.InfJump = v end)
+toggle(mainScroll, "Noclip", 164, false, function(v) S.Noclip = v end)
+toggle(mainScroll, "Click TP", 200, false, function(v) S.ClickTP = v end)
 
-section(mainScroll, "PROTECTION", 204)
-toggle(mainScroll, "Anti AFK", 224, true, function(v) S.AntiAFK = v end)
-toggle(mainScroll, "Anti Sit", 260, true, function(v) S.AntiSit = v end)
-toggle(mainScroll, "Reanimation", 296, false, function(v) S.Reanim = v end)
-toggle(mainScroll, "VC Bypass", 332, false, function(v) S.VCBypass = v end)
+section(mainScroll, "PROTECTION", 240)
+toggle(mainScroll, "Anti AFK", 260, true, function(v) S.AntiAFK = v end)
+toggle(mainScroll, "Anti Sit", 296, true, function(v) S.AntiSit = v end)
+toggle(mainScroll, "Reanimation", 332, false, function(v) S.Reanim = v end)
+toggle(mainScroll, "VC Bypass", 368, false, function(v) S.VCBypass = v if v then vcJoin() end end)
 
-local rejoin = bigBtn(mainScroll, "REJOIN", 376, C.Card2)
+local rejoin = bigBtn(mainScroll, "REJOIN", 412, C.Card2)
 rejoin.MouseButton1Click:Connect(function() TS:Teleport(game.PlaceId, LP) end)
+
+section(mainScroll, "VISUALS", 454)
+toggle(mainScroll, "Player ESP", 474, false, function(v) S.ESP = v end)
+toggle(mainScroll, "Fullbright", 510, false, function(v) S.Fullbright = v end)
+
+local hopBtn = bigBtn(mainScroll, "SERVER HOP", 550, C.Card2)
+hopBtn.MouseButton1Click:Connect(function() serverHop() end)
 
 -------------------------------------------------
 -- FLING PAGE
@@ -411,7 +521,6 @@ rejoin.MouseButton1Click:Connect(function() TS:Teleport(game.PlaceId, LP) end)
 local FP = Pages.FLING
 local search = inp(FP, "Search players...", 0)
 
--- Player list
 local list = Instance.new("ScrollingFrame", FP)
 list.Size = UDim2.new(1, 0, 0, 130)
 list.Position = UDim2.new(0, 0, 0, 34)
@@ -434,7 +543,6 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     list.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 8)
 end)
 
--- SELECTED TARGETS PANEL
 local selLabel = Instance.new("TextLabel", FP)
 selLabel.Size = UDim2.new(1, 0, 0, 16)
 selLabel.Position = UDim2.new(0, 0, 0, 170)
@@ -721,6 +829,7 @@ Players.PlayerRemoving:Connect(function(pl)
         Rows[pl].status.TextColor3 = C.Red
         Rows[pl].name.TextColor3 = C.Dim
     end
+    if esp[pl] then setESP(pl, false) end
     task.delay(0.1, refreshSelPanel)
 end)
 
@@ -783,22 +892,57 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -------------------------------------------------
--- SIMPLE FLY (no animation / no stuck)
+-- FLY (velocity-based — actually works) + fly animation
 -------------------------------------------------
-local flyConn
+local FLY_ANIM = "rbxassetid://3547867200" -- primary fly pose (swap to taste)
+local SWIM_R15 = "rbxassetid://507784897"  -- guaranteed fallback (R15)
+local SWIM_R6  = "rbxassetid://180436334"  -- guaranteed fallback (R6)
+
+local flyBV, flyBG, flyTrack, flyConn
+
+local function stopFlyAnim()
+    if flyTrack then
+        pcall(function() flyTrack:Stop(0.15) end)
+        flyTrack = nil
+    end
+end
+
+local function playFlyAnim(hum)
+    stopFlyAnim()
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then return end
+    local fallbackId = (hum.RigType == Enum.HumanoidRigType.R6) and SWIM_R6 or SWIM_R15
+
+    local function try(id, isFallback)
+        local a = Instance.new("Animation")
+        a.AnimationId = id
+        local ok, track = pcall(function() return animator:LoadAnimation(a) end)
+        if not ok or not track then return end
+        track.Priority = Enum.AnimationPriority.Action4
+        track.Looped = true
+        pcall(function() track:Play(0.2) end)
+        flyTrack = track
+        if not isFallback then
+            task.delay(0.6, function()
+                if flyTrack == track and S.Fly and track.Length <= 0 then
+                    try(fallbackId, true)
+                end
+            end)
+        end
+    end
+    try(FLY_ANIM, false)
+end
+
 local function stopFly()
     if flyConn then flyConn:Disconnect() flyConn = nil end
-    if LP.Character then
-        local h = LP.Character:FindFirstChildOfClass("Humanoid")
-        if h then h.PlatformStand = false end
-        local root = getRoot(LP.Character)
-        if root then
-            -- remove any leftover velocity objects
-            for _, v in ipairs(root:GetChildren()) do
-                if v.Name == "AsuraFlyBV" or v.Name == "AsuraFlyBG" then v:Destroy() end
-            end
-            root.AssemblyLinearVelocity = Vector3.zero
-        end
+    if flyBV then pcall(function() flyBV:Destroy() end) flyBV = nil end
+    if flyBG then pcall(function() flyBG:Destroy() end) flyBG = nil end
+    stopFlyAnim()
+    local char = LP.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.PlatformStand = false
+        pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
     end
 end
 
@@ -812,47 +956,70 @@ local function startFly()
 
     hum.PlatformStand = true
 
-    -- pure CFrame fly - no BodyVelocity animation lag
+    flyBV = Instance.new("BodyVelocity")
+    flyBV.Name = "AsuraFlyBV"
+    flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyBV.Velocity = Vector3.zero
+    flyBV.Parent = root
+
+    flyBG = Instance.new("BodyGyro")
+    flyBG.Name = "AsuraFlyBG"
+    flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyBG.P = 3000
+    flyBG.D = 100
+    flyBG.CFrame = root.CFrame
+    flyBG.Parent = root
+
+    playFlyAnim(hum)
+
     flyConn = RunService.RenderStepped:Connect(function(dt)
         if not S.Fly then return end
-        if not root or not root.Parent then stopFly() return end
+        if not root or not root.Parent then return end
         local cam = workspace.CurrentCamera
-        local move = Vector3.zero
-        if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+        local dir = Vector3.zero
+        if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
-            move = move + Vector3.new(0, -1, 0)
+            dir = dir - Vector3.new(0, 1, 0)
         end
-        if move.Magnitude > 0 then
-            root.CFrame = root.CFrame + move.Unit * S.FlySpeed * dt * 3.5
-        end
-        -- face camera direction lightly
-        local look = cam.CFrame.LookVector * Vector3.new(1, 0, 1)
-        if look.Magnitude > 0.1 then
-            root.CFrame = CFrame.new(root.Position, root.Position + look)
-        end
-        root.AssemblyLinearVelocity = Vector3.zero
-        root.AssemblyAngularVelocity = Vector3.zero
+        if dir.Magnitude > 0 then dir = dir.Unit * S.FlySpeed end
+        flyBV.Velocity = dir
+        flyBG.CFrame = CFrame.new(root.Position, root.Position + cam.CFrame.LookVector)
     end)
 end
 
+-- watcher: starts/stops, and auto-restarts after respawn
+local flyActive = false
 task.spawn(function()
-    local was = false
     while SG.Parent do
-        if S.Fly and not was then
-            startFly()
-            was = true
-        elseif not S.Fly and was then
+        if S.Fly then
+            if not flyActive or not flyBV or not flyBV.Parent then
+                startFly()
+                flyActive = true
+            end
+        elseif flyActive then
             stopFly()
-            was = false
+            flyActive = false
         end
         task.wait(0.1)
     end
+    stopFly()
 end)
 
+LP.CharacterAdded:Connect(function()
+    if S.Fly then
+        task.wait(0.4)
+        startFly()
+        flyActive = true
+    end
+end)
+
+-------------------------------------------------
+-- MISC LOOPS
+-------------------------------------------------
 RunService.Heartbeat:Connect(function()
     if S.Speed and LP.Character then
         local h = LP.Character:FindFirstChildOfClass("Humanoid")
@@ -893,16 +1060,72 @@ task.spawn(function()
     end
 end)
 
+-------------------------------------------------
+-- VC BYPASS (fixed: JoinVoice, not joinVoice)
+-------------------------------------------------
 task.spawn(function()
     while SG.Parent do
         if S.VCBypass then
-            pcall(function()
-                local vs = game:GetService("VoiceChatService")
-                if vs then pcall(function() vs:joinVoice() end) end
-            end)
+            vcJoin()
         end
-        task.wait(2)
+        task.wait(2.5)
     end
 end)
 
-print("[ASURA] v12  •  Scroll MAIN  •  Simple Fly  •  Selected Panel + LEFT")
+LP.CharacterAdded:Connect(function()
+    if S.VCBypass then task.wait(1.5) vcJoin() end
+end)
+
+-------------------------------------------------
+-- ESP LOOP
+-------------------------------------------------
+task.spawn(function()
+    while SG.Parent do
+        for _, pl in ipairs(Players:GetPlayers()) do
+            if pl ~= LP and pl.Character then
+                if S.ESP then
+                    if not esp[pl] or not (esp[pl].hl and esp[pl].hl.Parent) then
+                        setESP(pl, true)
+                    end
+                elseif esp[pl] then
+                    setESP(pl, false)
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-------------------------------------------------
+-- FULLBRIGHT LOOP
+-------------------------------------------------
+local fbSaved = false
+local fbOrig = {}
+task.spawn(function()
+    while SG.Parent do
+        if S.Fullbright and not fbSaved then
+            fbSaved = true
+            fbOrig = {
+                Brightness = Lighting.Brightness,
+                ClockTime = Lighting.ClockTime,
+                FogEnd = Lighting.FogEnd,
+                GlobalShadows = Lighting.GlobalShadows,
+                Ambient = Lighting.Ambient
+            }
+            Lighting.Brightness = 3
+            Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = false
+        elseif not S.Fullbright and fbSaved then
+            fbSaved = false
+            Lighting.Brightness = fbOrig.Brightness
+            Lighting.ClockTime = fbOrig.ClockTime
+            Lighting.FogEnd = fbOrig.FogEnd
+            Lighting.GlobalShadows = fbOrig.GlobalShadows
+            Lighting.Ambient = fbOrig.Ambient
+        end
+        task.wait(0.4)
+    end
+end)
+
+print("[ASURA] v14  •  Velocity Fly + anim  •  VC Bypass fixed  •  ESP/Fullbright/Serverhop")
