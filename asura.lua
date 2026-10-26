@@ -1,6 +1,6 @@
 --[[
-    ASURA Troller v14
-    Scrollable MAIN • Velocity Fly + animation • Selected targets panel + LEFT
+    ASURA Troller v15
+    Scrollable MAIN • Fixed Fly + animation (PC + mobile) • Selected targets panel
     Novoline-core port: working VC Bypass, ESP, Fullbright, Server Hop
 ]]
 
@@ -63,13 +63,10 @@ end
 -- NOVOLINE-CORE HELPERS
 -------------------------------------------------
 
--- VC Bypass: JoinVoice() re-adds you to the voice channel, which does not
--- enforce VC bans. (old code called :joinVoice() lowercase -> nil -> pcall ate it)
 local function vcJoin()
     pcall(function() VCS:JoinVoice() end)
 end
 
--- Server Hop
 local function serverHop()
     local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
     local ok, res = pcall(function() return game:HttpGet(url) end)
@@ -85,7 +82,6 @@ local function serverHop()
     end
 end
 
--- ESP
 local esp = {}
 local function setESP(pl, on)
     if esp[pl] then
@@ -201,7 +197,6 @@ Close.MouseButton1Click:Connect(function()
     task.wait(0.25) SG:Destroy()
 end)
 
--- Minimize
 local MiniBar = Instance.new("Frame", SG)
 MiniBar.Size = UDim2.new(0, 140, 0, 36)
 MiniBar.Position = UDim2.new(0.5, -70, 0, 20)
@@ -282,7 +277,6 @@ UIS.InputChanged:Connect(function(i)
     end
 end)
 
--- Tabs
 local TabBar = Instance.new("Frame", Main)
 TabBar.Size = UDim2.new(1, -20, 0, 32)
 TabBar.Position = UDim2.new(0, 10, 0, 48)
@@ -417,7 +411,6 @@ mainScroll.CanvasSize = UDim2.new(0, 0, 0, 640)
 section(mainScroll, "MOVEMENT", 0)
 toggle(mainScroll, "Fly", 20, false, function(v) S.Fly = v end)
 
--- Fly speed row
 local flyRow = Instance.new("Frame", mainScroll)
 flyRow.Size = UDim2.new(1, -8, 0, 32)
 flyRow.Position = UDim2.new(0, 4, 0, 56)
@@ -448,7 +441,6 @@ flyBox.FocusLost:Connect(function()
     if n and n > 0 then S.FlySpeed = math.clamp(n, 1, 500) flyBox.Text = tostring(S.FlySpeed) end
 end)
 
--- Speed row
 local speedRow = Instance.new("Frame", mainScroll)
 speedRow.Size = UDim2.new(1, -8, 0, 32)
 speedRow.Position = UDim2.new(0, 4, 0, 92)
@@ -863,14 +855,15 @@ LP.Idled:Connect(function()
     if S.AntiAFK then VU:CaptureController() VU:ClickButton2(Vector2.new()) end
 end)
 
+-- Anti-Sit: do NOT clobber PlatformStand while flying
 RunService.Heartbeat:Connect(function()
-    if S.AntiSit and LP.Character then
+    if S.AntiSit and not S.Fly and LP.Character then
         local h = LP.Character:FindFirstChildOfClass("Humanoid")
         if h and h.Sit then h.Sit = false h.PlatformStand = false end
     end
 end)
 
--- Zero delay fling
+-- Zero delay fling (skips the player's own CFrame while flying)
 RunService.Heartbeat:Connect(function()
     if not S.Fling then return end
     local my = getRoot(LP.Character)
@@ -882,7 +875,9 @@ RunService.Heartbeat:Connect(function()
                 S.Angle = S.Angle + 0.55
                 local r = 1.2 + math.sin(S.Angle * 2.5) * 3.2
                 pcall(function()
-                    my.CFrame = tr.CFrame * CFrame.Angles(0, S.Angle, 0) * CFrame.new(0, 0, r)
+                    if not S.Fly then
+                        my.CFrame = tr.CFrame * CFrame.Angles(0, S.Angle, 0) * CFrame.new(0, 0, r)
+                    end
                     tr.AssemblyAngularVelocity = Vector3.new(math.random(-99999,99999), 99999, math.random(-99999,99999))
                     tr.AssemblyLinearVelocity = Vector3.new(math.random(-250,250), 300 + math.random(0,150), math.random(-250,250))
                 end)
@@ -892,13 +887,14 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -------------------------------------------------
--- FLY (velocity-based — actually works) + fly animation
+-- FLY (bulletproof: BodyVelocity + BodyGyro, PC + mobile)
 -------------------------------------------------
 local FLY_ANIM = "rbxassetid://3547867200" -- primary fly pose (swap to taste)
 local SWIM_R15 = "rbxassetid://507784897"  -- guaranteed fallback (R15)
 local SWIM_R6  = "rbxassetid://180436334"  -- guaranteed fallback (R6)
 
-local flyBV, flyBG, flyTrack, flyConn
+local flyBV, flyBG, flyTrack, flyConn, flyRoot, flyHum = nil, nil, nil, nil, nil, nil
+local flyActive = false
 
 local function stopFlyAnim()
     if flyTrack then
@@ -938,12 +934,9 @@ local function stopFly()
     if flyBV then pcall(function() flyBV:Destroy() end) flyBV = nil end
     if flyBG then pcall(function() flyBG:Destroy() end) flyBG = nil end
     stopFlyAnim()
-    local char = LP.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.PlatformStand = false
-        pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
-    end
+    local hum = flyHum or (LP.Character and LP.Character:FindFirstChildOfClass("Humanoid"))
+    if hum then pcall(function() hum.PlatformStand = false end) end
+    flyRoot, flyHum = nil, nil
 end
 
 local function startFly()
@@ -954,6 +947,8 @@ local function startFly()
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
 
+    flyRoot, flyHum = root, hum
+    pcall(function() root.Anchored = false end)
     hum.PlatformStand = true
 
     flyBV = Instance.new("BodyVelocity")
@@ -965,34 +960,57 @@ local function startFly()
     flyBG = Instance.new("BodyGyro")
     flyBG.Name = "AsuraFlyBG"
     flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    flyBG.P = 3000
-    flyBG.D = 100
+    flyBG.P = 1e4
+    flyBG.D = 1e2
     flyBG.CFrame = root.CFrame
     flyBG.Parent = root
 
     playFlyAnim(hum)
 
-    flyConn = RunService.RenderStepped:Connect(function(dt)
-        if not S.Fly then return end
-        if not root or not root.Parent then return end
+    flyConn = RunService.RenderStepped:Connect(function()
+        if not S.Fly or not flyRoot or not flyRoot.Parent or not flyBV or not flyBG then return end
         local cam = workspace.CurrentCamera
+        if not cam then return end
+
+        -- keep the humanoid from taking control back
+        if flyHum and not flyHum.PlatformStand then flyHum.PlatformStand = true end
+
         local dir = Vector3.zero
         if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
+        if UIS:IsKeyDown(Enum.KeyCode.Space) or UIS:IsKeyDown(Enum.KeyCode.E) then
+            dir = dir + Vector3.new(0, 1, 0)
+        end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.Q) then
             dir = dir - Vector3.new(0, 1, 0)
         end
-        if dir.Magnitude > 0 then dir = dir.Unit * S.FlySpeed end
-        flyBV.Velocity = dir
-        flyBG.CFrame = CFrame.new(root.Position, root.Position + cam.CFrame.LookVector)
+
+        -- mobile / joystick fallback
+        if dir.Magnitude == 0 and flyHum then
+            local md = flyHum.MoveDirection
+            if md.Magnitude > 0.05 then dir = Vector3.new(md.X, 0, md.Z) end
+        end
+
+        if dir.Magnitude > 0 then
+            flyBV.Velocity = dir.Unit * S.FlySpeed
+        else
+            flyBV.Velocity = Vector3.zero
+        end
+
+        -- yaw toward camera using a FLATTENED look vector (fixes the straight-down spin)
+        local look = cam.CFrame.LookVector
+        local flat = Vector3.new(look.X, 0, look.Z)
+        if flat.Magnitude < 0.05 then flat = flyRoot.CFrame.LookVector end
+        flyBG.CFrame = CFrame.new(flyRoot.Position, flyRoot.Position + flat.Unit)
     end)
 end
 
--- watcher: starts/stops, and auto-restarts after respawn
-local flyActive = false
+local function stopFlySafe()
+    if flyActive then stopFly() flyActive = false end
+end
+
 task.spawn(function()
     while SG.Parent do
         if S.Fly then
@@ -1061,13 +1079,11 @@ task.spawn(function()
 end)
 
 -------------------------------------------------
--- VC BYPASS (fixed: JoinVoice, not joinVoice)
+-- VC BYPASS
 -------------------------------------------------
 task.spawn(function()
     while SG.Parent do
-        if S.VCBypass then
-            vcJoin()
-        end
+        if S.VCBypass then vcJoin() end
         task.wait(2.5)
     end
 end)
@@ -1128,4 +1144,4 @@ task.spawn(function()
     end
 end)
 
-print("[ASURA] v14  •  Velocity Fly + anim  •  VC Bypass fixed  •  ESP/Fullbright/Serverhop")
+print("[ASURA] v15  •  Fly fixed (PC + mobile)  •  VC Bypass  •  ESP/Fullbright/Serverhop")
