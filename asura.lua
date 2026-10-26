@@ -1,7 +1,7 @@
 --[[
-    ASURA Troller v15
-    Scrollable MAIN • Fixed Fly + animation (PC + mobile) • Selected targets panel
-    Novoline-core port: working VC Bypass, ESP, Fullbright, Server Hop
+    ASURA Troller v16
+    Fly fixed (on-screen up/down + validated fly animation) • Scrollable MAIN
+    Selected targets panel • Novoline-core: VC Bypass, ESP, Fullbright, Server Hop
 ]]
 
 local Players = game:GetService("Players")
@@ -36,7 +36,7 @@ local S = {
     Sel = {}, Fling = false, Spam = false, Noclip = false,
     AntiAFK = true, AntiSit = true, Fly = false, Speed = false,
     InfJump = false, ClickTP = false, Reanim = false, VCBypass = false,
-    ESP = false, Fullbright = false,
+    ESP = false, Fullbright = false, FlyUp = false, FlyDown = false,
     Delay = 2.5, MsgCount = 0, Angle = 0, Symbols = "",
     SpeedVal = 50, FlySpeed = 50, Minimized = false
 }
@@ -57,6 +57,36 @@ local function tw(o, p, t, s, d)
     local a = TweenService:Create(o, TweenInfo.new(t or 0.2, s or Enum.EasingStyle.Quad, d or Enum.EasingDirection.Out), p)
     a:Play()
     return a
+end
+
+local function holdBtn(parent, text, y, flag)
+    local b = Instance.new("TextButton", parent)
+    b.Size = UDim2.new(1, 0, 0, 52)
+    b.Position = UDim2.new(0, 0, 0, y)
+    b.BackgroundColor3 = C.Card
+    b.Text = text
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 18
+    b.TextColor3 = C.Soft
+    b.AutoButtonColor = false
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+    local st = Instance.new("UIStroke", b)
+    st.Color = C.Acc
+    st.Thickness = 1.2
+    st.Transparency = 0.4
+    b.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            S[flag] = true
+            tw(b, {BackgroundColor3 = C.Acc2}, 0.08)
+        end
+    end)
+    b.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            S[flag] = false
+            tw(b, {BackgroundColor3 = C.Card}, 0.08)
+        end
+    end)
+    return b
 end
 
 -------------------------------------------------
@@ -277,6 +307,15 @@ UIS.InputChanged:Connect(function(i)
     end
 end)
 
+-- Floating FLY up/down buttons (always visible, touch + mouse)
+local vCtrl = Instance.new("Frame", SG)
+vCtrl.Name = "AsuraVCtrl"
+vCtrl.Size = UDim2.new(0, 52, 0, 112)
+vCtrl.Position = UDim2.new(1, -64, 0.5, 20)
+vCtrl.BackgroundTransparency = 1
+holdBtn(vCtrl, "▲", 0, "FlyUp")
+holdBtn(vCtrl, "▼", 60, "FlyDown")
+
 local TabBar = Instance.new("Frame", Main)
 TabBar.Size = UDim2.new(1, -20, 0, 32)
 TabBar.Position = UDim2.new(0, 10, 0, 48)
@@ -395,7 +434,7 @@ local function inp(parent, ph, y, def)
 end
 
 -------------------------------------------------
--- MAIN PAGE (SCROLLABLE)
+-- MAIN PAGE
 -------------------------------------------------
 local MP = Pages.MAIN
 
@@ -855,7 +894,6 @@ LP.Idled:Connect(function()
     if S.AntiAFK then VU:CaptureController() VU:ClickButton2(Vector2.new()) end
 end)
 
--- Anti-Sit: do NOT clobber PlatformStand while flying
 RunService.Heartbeat:Connect(function()
     if S.AntiSit and not S.Fly and LP.Character then
         local h = LP.Character:FindFirstChildOfClass("Humanoid")
@@ -863,7 +901,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Zero delay fling (skips the player's own CFrame while flying)
 RunService.Heartbeat:Connect(function()
     if not S.Fling then return end
     local my = getRoot(LP.Character)
@@ -887,14 +924,22 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -------------------------------------------------
--- FLY (bulletproof: BodyVelocity + BodyGyro, PC + mobile)
+-- FLY (up/down fixed + validated fly animation)
 -------------------------------------------------
-local FLY_ANIM = "rbxassetid://3547867200" -- primary fly pose (swap to taste)
-local SWIM_R15 = "rbxassetid://507784897"  -- guaranteed fallback (R15)
-local SWIM_R6  = "rbxassetid://180436334"  -- guaranteed fallback (R6)
+local FLY_TILT = -72 -- degrees, superman lean while moving (0 = stay upright)
+
+-- candidate fly animations; validated at runtime, swim is the guaranteed fallback
+local FLY_ANIMS = {
+    "rbxassetid://3547867200",
+    "rbxassetid://3547846018",
+    "rbxassetid://913402848",
+}
+local SWIM_R15 = "rbxassetid://507784897"
+local SWIM_R6  = "rbxassetid://180436334"
 
 local flyBV, flyBG, flyTrack, flyConn, flyRoot, flyHum = nil, nil, nil, nil, nil, nil
 local flyActive = false
+local flyPitch = 0
 
 local function stopFlyAnim()
     if flyTrack then
@@ -907,26 +952,31 @@ local function playFlyAnim(hum)
     stopFlyAnim()
     local animator = hum:FindFirstChildOfClass("Animator")
     if not animator then return end
-    local fallbackId = (hum.RigType == Enum.HumanoidRigType.R6) and SWIM_R6 or SWIM_R15
 
-    local function try(id, isFallback)
+    local list = {}
+    for _, id in ipairs(FLY_ANIMS) do list[#list + 1] = id end
+    list[#list + 1] = (hum.RigType == Enum.HumanoidRigType.R6) and SWIM_R6 or SWIM_R15
+
+    local function attempt(i)
+        if i > #list or not S.Fly then return end
         local a = Instance.new("Animation")
-        a.AnimationId = id
+        a.AnimationId = list[i]
         local ok, track = pcall(function() return animator:LoadAnimation(a) end)
-        if not ok or not track then return end
+        if not ok or not track then attempt(i + 1) return end
         track.Priority = Enum.AnimationPriority.Action4
         track.Looped = true
         pcall(function() track:Play(0.2) end)
         flyTrack = track
-        if not isFallback then
-            task.delay(0.6, function()
-                if flyTrack == track and S.Fly and track.Length <= 0 then
-                    try(fallbackId, true)
-                end
-            end)
-        end
+        -- if the asset never resolved (length 0), move to the next candidate
+        task.delay(0.5, function()
+            if flyTrack ~= track or not S.Fly then return end
+            if track.Length <= 0 or not track.IsPlaying then
+                pcall(function() track:Stop() end)
+                attempt(i + 1)
+            end
+        end)
     end
-    try(FLY_ANIM, false)
+    attempt(1)
 end
 
 local function stopFly()
@@ -937,6 +987,7 @@ local function stopFly()
     local hum = flyHum or (LP.Character and LP.Character:FindFirstChildOfClass("Humanoid"))
     if hum then pcall(function() hum.PlatformStand = false end) end
     flyRoot, flyHum = nil, nil
+    flyPitch = 0
 end
 
 local function startFly()
@@ -967,27 +1018,28 @@ local function startFly()
 
     playFlyAnim(hum)
 
-    flyConn = RunService.RenderStepped:Connect(function()
+    flyConn = RunService.RenderStepped:Connect(function(dt)
         if not S.Fly or not flyRoot or not flyRoot.Parent or not flyBV or not flyBG then return end
         local cam = workspace.CurrentCamera
         if not cam then return end
-
-        -- keep the humanoid from taking control back
         if flyHum and not flyHum.PlatformStand then flyHum.PlatformStand = true end
 
         local dir = Vector3.zero
+        -- horizontal
         if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) or UIS:IsKeyDown(Enum.KeyCode.E) then
+        -- vertical: keys OR on-screen buttons
+        if UIS:IsKeyDown(Enum.KeyCode.Space) or UIS:IsKeyDown(Enum.KeyCode.E) or S.FlyUp then
             dir = dir + Vector3.new(0, 1, 0)
         end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.Q) then
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.LeftShift)
+            or UIS:IsKeyDown(Enum.KeyCode.Q) or S.FlyDown then
             dir = dir - Vector3.new(0, 1, 0)
         end
 
-        -- mobile / joystick fallback
+        -- mobile joystick fallback (horizontal only)
         if dir.Magnitude == 0 and flyHum then
             local md = flyHum.MoveDirection
             if md.Magnitude > 0.05 then dir = Vector3.new(md.X, 0, md.Z) end
@@ -999,16 +1051,18 @@ local function startFly()
             flyBV.Velocity = Vector3.zero
         end
 
-        -- yaw toward camera using a FLATTENED look vector (fixes the straight-down spin)
+        -- face camera (flattened so looking straight down doesn't tumble)
         local look = cam.CFrame.LookVector
         local flat = Vector3.new(look.X, 0, look.Z)
         if flat.Magnitude < 0.05 then flat = flyRoot.CFrame.LookVector end
-        flyBG.CFrame = CFrame.new(flyRoot.Position, flyRoot.Position + flat.Unit)
-    end)
-end
 
-local function stopFlySafe()
-    if flyActive then stopFly() flyActive = false end
+        -- superman lean only while moving horizontally
+        local horiz = Vector3.new(dir.X, 0, dir.Z)
+        local target = (horiz.Magnitude > 0.05) and math.rad(FLY_TILT) or 0
+        flyPitch = flyPitch + (target - flyPitch) * math.min(1, dt * 8)
+
+        flyBG.CFrame = CFrame.new(flyRoot.Position, flyRoot.Position + flat.Unit) * CFrame.Angles(flyPitch, 0, 0)
+    end)
 end
 
 task.spawn(function()
@@ -1144,4 +1198,4 @@ task.spawn(function()
     end
 end)
 
-print("[ASURA] v15  •  Fly fixed (PC + mobile)  •  VC Bypass  •  ESP/Fullbright/Serverhop")
+print("[ASURA] v16  •  Fly up/down buttons + fly anim  •  VC Bypass  •  ESP/Fullbright/Serverhop")
